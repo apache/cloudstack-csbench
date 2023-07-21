@@ -1,0 +1,13 @@
+listDomains keyword=test
+listAccounts
+listVirtualMachines
+listVolumes
+listTemplates
+listNetworks
+listPublicIpAddresses
+listVPCs
+listSnapshots
+listVMSnapshot
+listServiceOfferings
+listDiskOfferings
+listHosts

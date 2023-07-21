@@ -1,0 +1,26 @@
+url = http://localhost:8080/client/api/
+iterations = 4
+page = 1
+pagesize = 20
+
+[admin]
+apikey = wLvaRCjiMCEKzo8OnF9uH6ieCGZKG_6gfkVK1Qkx5yi5pde5jlUPXku66A2d2ehIowlIanTfGVwQSxMRryN3nA
+secretkey = -9e4AGjrCtDThzSFVJKC3E2hPAnD9YV_bintfOvxnzPzMAuDkRB7CslOEYYkrWVqFeCTslLmxp--Bcg39br8ow
+expires = 600
+signatureversion = 3
+timeout = 3600
+
+[user]
+apikey = wLvaRCjiMCEKzo8OnF9uH6ieCGZKG_6gfkVK1Qkx5yi5pde5jlUPXku66A2d2ehIowlIanTfGVwQSxMRryN3nA
+secretkey = -9e4AGjrCtDThzSFVJKC3E2hPAnD9YV_bintfOvxnzPzMAuDkRB7CslOEYYkrWVqFeCTslLmxp--Bcg39br8ow
+expires = 600
+signatureversion = 3
+timeout = 3600
+
+[domainadmin]
+apikey = wLvaRCjiMCEKzo8OnF9uH6ieCGZKG_6gfkVK1Qkx5yi5pde5jlUPXku66A2d2ehIowlIanTfGVwQSxMRryN3nA
+secretkey = -9e4AGjrCtDThzSFVJKC3E2hPAnD9YV_bintfOvxnzPzMAuDkRB7CslOEYYkrWVqFeCTslLmxp--Bcg39br8ow
+expires = 600
+signatureversion = 3
+timeout = 3600
+
