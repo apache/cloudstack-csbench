@@ -12,12 +12,12 @@ type Profile struct {
     Name             string
     ApiKey           string
     SecretKey        string
-    Expires          int
-    SignatureVersion int
-    Timeout          int
+    Expires          int        `default:"600"`
+    SignatureVersion int        `default:"3"`
+    Timeout          int        `default:"3600"`
 }
 
-var URL = ""
+var URL = "http://localhost:8080/client/api/"
 var Iterations = 1
 var Page = 0
 var PageSize = 0
@@ -124,7 +124,22 @@ func ReadProfiles(filePath string) (map[int]*Profile, error) {
 	}
 	Host = parsedURL.Hostname()
 
+    validateConfig(profiles)
 
     return profiles, nil
 }
 
+func validateConfig(profiles map[int]*Profile) (bool) {
+
+    result := true
+	for i, profile := range profiles {
+		if profile.ApiKey == "" || profile.SecretKey == "" {
+		    message := "Please check ApiKey, SecretKey of the profile. They should not be empty"
+		    fmt.Printf("Skipping profile [%s] : %s\n", profile.Name, message)
+		    delete(profiles, i)
+            result = false
+        }
+	}
+
+	return result
+}

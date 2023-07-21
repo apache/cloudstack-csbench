@@ -191,10 +191,13 @@ func saveData(apiURL string, count float64, minTime float64, maxTime float64, av
     	writer := csv.NewWriter(file)
     	defer writer.Flush()
 
-        reader := bufio.NewReader(file)
+        filereader, err := os.Open(file.Name())
+        defer filereader.Close()
+        reader := bufio.NewReader(filereader)
         firstLine, err := reader.ReadString('\n')
-        fmt.Printf("HARI %s", firstLine)
-        if !strings.Contains(firstLine, "Count") {
+        containsCount := strings.Contains(strings.ToLower(firstLine), "count")
+
+        if !containsCount {
             header := []string{"Count", "MinTime", "MaxTime", "AvgTime", "Page", "PageSize", "keyword", "User", "DBprofile"}
             err = writer.Write(header)
             if err != nil {
@@ -202,7 +205,6 @@ func saveData(apiURL string, count float64, minTime float64, maxTime float64, av
                 return
             }
         }
-
 
     	record := []string{}
     	if page != 0 {
@@ -241,34 +243,7 @@ func saveData(apiURL string, count float64, minTime float64, maxTime float64, av
 	logger.Log(message)
 }
 
-func executeAPI() (apiURL string, params url.Values) (float64, float64, bool) {
-	concurrentOptions := 5 // Change this value to the desired number of concurrent options.
-
-	var wg sync.WaitGroup
-	requestsChan := make(chan int, concurrentOptions)
-
-	// Start the goroutines to make concurrent API requests.
-	for i := 0; i < concurrentOptions; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for range requestsChan {
-                elapsedTime, apicount, _ := executeAPI(apiURL, params)
-            }
-		}()
-	}
-
-	// Send the API requests to the channel.
-	for i := 0; i < 10; i++ { // Replace '10' with the total number of API requests you want to make.
-		requestsChan <- i
-	}
-
-	close(requestsChan)
-	wg.Wait()
-
-}
-
-func executeAPIconcurrent(apiURL string, params url.Values) (float64, float64, bool) {
+func executeAPI(apiURL string, params url.Values) (float64, float64, bool) {
     // Send the API request and calculate the time
     apiURL = fmt.Sprintf("%s?%s", apiURL, params.Encode())
     logger.Log(fmt.Sprintf("Running the API %s", apiURL))
