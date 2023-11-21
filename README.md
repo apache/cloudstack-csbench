@@ -1,8 +1,10 @@
-# csbench
+# CloudStack Bench - csbench
 
-This is Apache CloudStack Benchmark Tool, also known as "csbench"! Csbench is a tool designed to evaluate the performance and efficiency of Apache CloudStack. 
+`csbench` is a tool designed to evaluate the performance and efficiency of
+Apache CloudStack.
 
-The tool is designed to be run from a single host, and can be used to benchmark a single CloudStack Zone.
+The tool is designed to be run from a single host, and can be used to benchmark
+a single CloudStack Zone.
 
 As of now, there are two modes of operation:
 1. Setting up environment with multiple domains, accounts, users, networks, VMs, etc.
@@ -76,22 +78,5 @@ Currently, it looks like
 ```bash
 /csbench$ ./csbench -benchmark
 ```
-![image](https://github.com/shapeblue/csbench/assets/3348673/db37e176-474e-4b7d-8323-6a9a919414be)
 
-The following are configurations options 
-
-config/config file looks like the below having, CloudStack URL, user profiles for benchmarking and others,
-
-![image](https://github.com/shapeblue/csbench/assets/3348673/bbdfcbd6-c57d-432f-bd63-799ad63d0b2f)
-
-listCommants.txt file contains the list APIs that will be called for benchmarking
-
-![image](https://github.com/shapeblue/csbench/assets/3348673/51402593-f330-4382-8e6e-4cec79a1bc1a)
-
-Reports will be saved as CSV files for each API under report/individual/<management server host>/ report/accumulated/<management server host>
-/individual folder contains the reports for each run
-/accumulated folder contains the reports accumulated for all the runs
-
-For example listDomains API Report looks like
-
-![image](https://github.com/shapeblue/csbench/assets/3348673/4182b7ac-217a-489f-b7e6-fcb909633de8)
+Note: this tool will go through several changes and is under development.
