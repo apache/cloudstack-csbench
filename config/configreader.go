@@ -1,20 +1,39 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 package config
 
 import (
-    "bufio"
-    "fmt"
-    "os"
-    "strings"
-    "net/url"
+	"bufio"
+	"fmt"
+	"net/url"
+	"os"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Profile struct {
-    Name             string
-    ApiKey           string
-    SecretKey        string
-    Expires          int        `default:"600"`
-    SignatureVersion int        `default:"3"`
-    Timeout          int        `default:"3600"`
+	Name             string
+	ApiKey           string
+	SecretKey        string
+	Expires          int `default:"600"`
+	SignatureVersion int `default:"3"`
+	Timeout          int `default:"3600"`
 }
 
 var URL = "http://localhost:8080/client/api/"
@@ -22,123 +41,161 @@ var Iterations = 1
 var Page = 0
 var PageSize = 0
 var Host = ""
+var ZoneId = ""
+var NetworkOfferingId = ""
+var ServiceOfferingId = ""
+var DiskOfferingId = ""
+var TemplateId = ""
+var ParentDomainId = ""
+var NumDomains = 0
+var NumVms = 0
+var NumVolumes = 0
 
 func ReadProfiles(filePath string) (map[int]*Profile, error) {
-    file, err := os.Open(filePath)
-    if err != nil {
-        return nil, fmt.Errorf("error opening file: %w", err)
-    }
-    defer file.Close()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error opening file: %w", err)
+	}
+	defer file.Close()
 
-    scanner := bufio.NewScanner(file)
-    profiles := make(map[int]*Profile)
-    var currentProfile string
+	scanner := bufio.NewScanner(file)
+	profiles := make(map[int]*Profile)
+	var currentProfile string
 
-    i := 0
-    for scanner.Scan() {
-        line := scanner.Text()
-        line = strings.TrimSpace(line)
+	i := 0
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
 
-        if line == "" || strings.HasPrefix(line, ";") {
-            continue
-        }
+		if line == "" || strings.HasPrefix(line, ";") {
+			continue
+		}
 
-        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-            currentProfile = line[1 : len(line)-1]
-            i++
-            profiles[i] = &Profile{}
-            profiles[i].Name = currentProfile
-        } else {
-            // Parse key-value pairs within the profile
-            parts := strings.SplitN(line, "=", 2)
-            if len(parts) == 2 {
-                key := strings.TrimSpace(parts[0])
-                value := strings.TrimSpace(parts[1])
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentProfile = line[1 : len(line)-1]
+			i++
+			profiles[i] = &Profile{}
+			profiles[i].Name = currentProfile
+		} else {
+			// Parse key-value pairs within the profile
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
 
-                switch strings.ToLower(key) {
-                case "apikey":
-                    profiles[i].ApiKey = value
-                case "secretkey":
-                    profiles[i].SecretKey = value
-                case "url":
-                    URL = value
-                case "iterations":
-                    var iterations int
-                    _, err := fmt.Sscanf(value, "%d", &iterations)
-                    if err == nil {
-                        Iterations = iterations
-                    }
-                case "page":
-                    var page int
-                    _, err := fmt.Sscanf(value, "%d", &page)
-                    if err == nil {
-                        Page = page
-                    }
-                case "pagesize":
-                    var pagesize int
-                    _, err := fmt.Sscanf(value, "%d", &pagesize)
-                    if err == nil {
-                        PageSize = pagesize
-                    }
-                case "expires":
-                    var expires int
-                    _, err := fmt.Sscanf(value, "%d", &expires)
-                    if err == nil {
-                        profiles[i].Expires = expires
-                    }
-                case "signatureversion":
-                    var signatureVersion int
-                    _, err := fmt.Sscanf(value, "%d", &signatureVersion)
-                    if err == nil {
-                        profiles[i].SignatureVersion = signatureVersion
-                    }
-                case "timeout":
-                    var timeout int
-                    _, err := fmt.Sscanf(value, "%d", &timeout)
-                    if err == nil {
-                        profiles[i].Timeout = timeout
-                    }
-                }
-            }
-        }
-    }
+				switch strings.ToLower(key) {
+				case "apikey":
+					profiles[i].ApiKey = value
+				case "secretkey":
+					profiles[i].SecretKey = value
+				case "url":
+					URL = value
+				case "iterations":
+					var iterations int
+					_, err := fmt.Sscanf(value, "%d", &iterations)
+					if err == nil {
+						Iterations = iterations
+					}
+				case "page":
+					var page int
+					_, err := fmt.Sscanf(value, "%d", &page)
+					if err == nil {
+						Page = page
+					}
+				case "pagesize":
+					var pagesize int
+					_, err := fmt.Sscanf(value, "%d", &pagesize)
+					if err == nil {
+						PageSize = pagesize
+					}
+				case "expires":
+					var expires int
+					_, err := fmt.Sscanf(value, "%d", &expires)
+					if err == nil {
+						profiles[i].Expires = expires
+					}
+				case "signatureversion":
+					var signatureVersion int
+					_, err := fmt.Sscanf(value, "%d", &signatureVersion)
+					if err == nil {
+						profiles[i].SignatureVersion = signatureVersion
+					}
+				case "timeout":
+					var timeout int
+					_, err := fmt.Sscanf(value, "%d", &timeout)
+					if err == nil {
+						profiles[i].Timeout = timeout
+					}
+				case "zoneid":
+					ZoneId = value
+				case "networkofferingid":
+					NetworkOfferingId = value
+				case "serviceofferingid":
+					ServiceOfferingId = value
+				case "diskofferingid":
+					DiskOfferingId = value
+				case "templateid":
+					TemplateId = value
+				case "parentdomainid":
+					ParentDomainId = value
+				case "numdomains":
+					var numDomains int
+					_, err := fmt.Sscanf(value, "%d", &numDomains)
+					if err == nil {
+						NumDomains = numDomains
+					}
+				case "numvms":
+					var numVms int
+					_, err := fmt.Sscanf(value, "%d", &numVms)
+					if err == nil {
+						NumVms = numVms
+					}
+				case "numvolumes":
+					var numVolumes int
+					_, err := fmt.Sscanf(value, "%d", &numVolumes)
+					if err == nil {
+						NumVolumes = numVolumes
+					}
+				}
+			}
+		}
+	}
 
-    if err := scanner.Err(); err != nil {
-        return nil, fmt.Errorf("error scanning file: %w", err)
-    }
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error scanning file: %w", err)
+	}
 
-    if len(profiles) == 0 {
-        fmt.Println("No roles are defined in the configuration file")
-        return nil, fmt.Errorf("No roles are defined in the configuration file: %w", err)
-    }
+	if len(profiles) == 0 {
+		fmt.Println("No roles are defined in the configuration file")
+		return nil, fmt.Errorf("no roles are defined in the configuration file: %w", err)
+	}
 
-    if URL == "" {
-        fmt.Println("URL not found in the configuration, please verify")
-        os.Exit(1)
-    }
+	if URL == "" {
+		log.Fatalln("URL not found in the configuration, please verify")
+	}
 
 	parsedURL, err := url.Parse(URL)
 	if err != nil {
-        fmt.Println("Error parsing URL : %s with error : %s\n", URL, err)
-		return nil, fmt.Errorf("Error parsing URL : %s with error : %s\n", URL, err)
+		log.Errorf("Error parsing URL : %s with error : %s", URL, err)
+		return nil, fmt.Errorf("error parsing url : %s with error : %s", URL, err)
 	}
 	Host = parsedURL.Hostname()
 
-    validateConfig(profiles)
+	validateConfig(profiles)
 
-    return profiles, nil
+	return profiles, nil
 }
 
-func validateConfig(profiles map[int]*Profile) (bool) {
+func validateConfig(profiles map[int]*Profile) bool {
 
-    result := true
+	result := true
 	for i, profile := range profiles {
 		if profile.ApiKey == "" || profile.SecretKey == "" {
-		    message := "Please check ApiKey, SecretKey of the profile. They should not be empty"
-		    fmt.Printf("Skipping profile [%s] : %s\n", profile.Name, message)
-		    delete(profiles, i)
-            result = false
-        }
+			message := "Please check ApiKey, SecretKey of the profile. They should not be empty"
+			fmt.Printf("Skipping profile [%s] : %s\n", profile.Name, message)
+			delete(profiles, i)
+			result = false
+		}
 	}
 
 	return result

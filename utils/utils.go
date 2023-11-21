@@ -15,24 +15,23 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package logger
+package utils
 
 import (
-	"log"
-	"os"
+	"math/rand"
+	"time"
 )
 
-var logger *log.Logger
-
 func init() {
-	logFile, err := os.OpenFile("csmetrics.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("Failed to create log file: %v", err)
-	}
-
-	logger = log.New(logFile, "", log.LstdFlags|log.Lshortfile)
+	rand.Seed(time.Now().UnixNano())
 }
 
-func Log(message string) {
-	logger.Printf("%s", message)
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandomString(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

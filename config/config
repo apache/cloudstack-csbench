@@ -1,11 +1,20 @@
 url = http://localhost:8080/client/api/
-iterations = 4
-page = 1
-pagesize = 20
+iterations = 1
+page = 0
+pagesize = 1000
+zoneid = d6beefe6-655e-4980-a7fe-b8e954d37029
+templateid = 5b958213-73d9-11ee-8150-7404f10c2178
+serviceofferingid = 39f91d73-0491-43e6-9d2a-1731de959044
+diskofferingid = d645f7ff-0a4d-4c34-a127-74bc1b61777a
+networkofferingid = b3161697-b891-4708-ab10-696c44472764
+parentdomainid = e9fe9167-73d8-11ee-8150-7404f10c2178
+numdomains = 2
+numvms = 2
+numvolumes = 2
 
 [admin]
-apikey = wLvaRCjiMCEKzo8OnF9uH6ieCGZKG_6gfkVK1Qkx5yi5pde5jlUPXku66A2d2ehIowlIanTfGVwQSxMRryN3nA
-secretkey = -9e4AGjrCtDThzSFVJKC3E2hPAnD9YV_bintfOvxnzPzMAuDkRB7CslOEYYkrWVqFeCTslLmxp--Bcg39br8ow
+apikey = j3oGqk6f0cCwLCM8H5aCTZc6pZhu6wqSP0cg5k7hTP50adMmN00s5meQp83WE1oLBVAw1k0jb6z0-4kFofzAIg
+secretkey = RkDYbrzy70McncZXtPEtto3mLacjOVDeOYAQ5gTYefSdlznYm_WLZEgKc8O-GIKTzK_WpwtdtQjQhjkoybrbFA
 expires = 600
 signatureversion = 3
 timeout = 3600
