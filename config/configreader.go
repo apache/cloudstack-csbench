@@ -33,7 +33,6 @@ type Profile struct {
 	SecretKey        string
 	Expires          int `default:"600"`
 	SignatureVersion int `default:"3"`
-	Timeout          int `default:"3600"`
 }
 
 var URL = "http://localhost:8080/client/api/"
@@ -119,12 +118,6 @@ func ReadProfiles(filePath string) (map[int]*Profile, error) {
 					_, err := fmt.Sscanf(value, "%d", &signatureVersion)
 					if err == nil {
 						profiles[i].SignatureVersion = signatureVersion
-					}
-				case "timeout":
-					var timeout int
-					_, err := fmt.Sscanf(value, "%d", &timeout)
-					if err == nil {
-						profiles[i].Timeout = timeout
 					}
 				case "zoneid":
 					ZoneId = value

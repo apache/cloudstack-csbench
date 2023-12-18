@@ -22,8 +22,48 @@ go build
 
 Setup a config file. Check the sample config file [here](./config/config).
 
+```toml
+# URL of the CloudStack API endpoint
+url = http://localhost:8080/client/api/
+# Number of times to run the test. Used only for -benchmark
+iterations = 1
+# Page of results to start on. Used only for -benchmark
+page = 0
+# Max number of items to return per API call
+pagesize = 5
+# Zone to use for VMs. Used only for -create
+zoneid = <zone id>
+# Template to use for VMs. Used only for -create
+templateid = <template id>
+# Service offering to use for VMs. Used only for -create
+serviceofferingid = <service offering id>
+# Disk offering to use for volumes. Used only for -create
+diskofferingid = <disk offering id>
+# Shared network offering ID. Used only for -create
+networkofferingid = <network offering id>
+# Domain ID of the parent domain to create the subdomains under. Used only for -create
+parentdomainid = <domain id>
+# Number of domains to create. Creates a shared network for each domain. Used only for -create
+numdomains = 2
+# Number of VMs to create per domain. Used only for -create
+numvms = 2
+# Number of volumes to create & attach per VM. Used only for -create
+numvolumes = 2
+
+# Credentials to use to run -benchmark & -create. Name should be "admin" for -create
+# Multiple profiles can be added and they will be used for -benchmark
+[admin]
+apikey = <api key>
+secretkey = <secret key>
+# Duration after which the signature included in the request is expired
+expires = 600
+# Signature version to allow the client to force a specific signature version
+signatureversion = 3
+```
+
+
 ```bash
-/csbench$ ./csbench -h
+$ csbench -h
 Usage: go run csmetrictool.go -dbprofile <DB profile number>
 Options:
   -benchmark
@@ -35,23 +75,23 @@ Options:
   -dbprofile int
         DB profile number
   -domain
-        Create domain
+        Create subdomains and accounts
   -format string
         Format of the report (csv, tsv, table). Valid only for create (default "table")
   -limits
-        Update limits to -1
+        Update limits to -1 for subdomains and accounts
   -network
-        Create shared network
+        Create shared network in all subdomains
   -output string
         Path to output file. Valid only for create
   -teardown
         Tear down all subdomains
   -vm
-        Deploy VMs
+        Deploy VMs in all networks in the subdomains
   -volume
-        Attach Volumes to VMs
+        Create and attach Volumes to VMs
   -workers int
-        number of workers to use while creating resources (default 10)
+        Number of workers to use while creating resources (default 10)
 ```
 
 ## Setting up an environment for benchmarking
