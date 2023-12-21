@@ -1,32 +1,49 @@
-url = http://localhost:8080/client/api/                  # URL of the CloudStack API endpoint
-iterations = 1                                           # Number of times to run the test. Used only for -benchmark
-page = 0                                                 # Page of results to start on. Used only for -benchmark
-pagesize = 500                                           # Max number of items to return per API call
-zoneid = d6beefe6-655e-4980-a7fe-b8e954d37029            # Zone to use for VMs. Used only for -create
-templateid = 5b958213-73d9-11ee-8150-7404f10c2178        # Template to use for VMs. Used only for -create
-serviceofferingid = 39f91d73-0491-43e6-9d2a-1731de959044 # Service offering to use for VMs. Used only for -create
-diskofferingid = d645f7ff-0a4d-4c34-a127-74bc1b61777a    # Disk offering to use for volumes. Used only for -create
-networkofferingid = b3161697-b891-4708-ab10-696c44472764 # Shared network offering ID. Used only for -create
-parentdomainid = e9fe9167-73d8-11ee-8150-7404f10c2178    # Domain ID of the parent domain to create the subdomains under. Used only for -create
-numdomains = 2                                           # Number of domains to create. Creates a shared network for each domain. Used only for -create
-numvms = 2                                               # Number of VMs to create per domain. Used only for -create
-numvolumes = 2                                           # Number of volumes to create & attach per VM. Used only for -create
+# URL of the CloudStack API endpoint
+url = http://localhost:8080/client/api/
+# Number of times to run the test. Used only for -benchmark
+iterations = 1
+# Page of results to start on. Used only for -benchmark
+page = 0
+# Max number of items to return per API call
+pagesize = 500
+# Zone to use for VMs. Used only for -create
+zoneid = d6beefe6-655e-4980-a7fe-b8e954d37029
+# Template to use for VMs. Used only for -create
+templateid = 5b958213-73d9-11ee-8150-7404f10c2178
+# Service offering to use for VMs. Used only for -create
+serviceofferingid = 39f91d73-0491-43e6-9d2a-1731de959044
+# Disk offering to use for volumes. Used only for -create
+diskofferingid = d645f7ff-0a4d-4c34-a127-74bc1b61777a
+# Shared network offering ID. Used only for -create
+networkofferingid = b3161697-b891-4708-ab10-696c44472764
+# Domain ID of the parent domain to create the subdomains under. Used only for -create
+parentdomainid = e46a3820-9e3e-11ee-8fa0-7404f10c2178
+# Number of domains to create. Creates a shared network for each domain. Used only for -create
+numdomains = 2
+# Number of VMs to create per domain. Used only for -create
+numvms = 2
+# Number of volumes to create & attach per VM. Used only for -create
+numvolumes = 2
 
-[admin]                                                  # Keys to use to run -benchmark & -create. Name should be "admin" for -create
-apikey = j3oGqk6f0cCwLCM8H5aCTZc6pZhu6wqSP0cg5k7hTP50adMmN00s5meQp83WE1oLBVAw1k0jb6z0-4kFofzAIg
-secretkey = RkDYbrzy70McncZXtPEtto3mLacjOVDeOYAQ5gTYefSdlznYm_WLZEgKc8O-GIKTzK_WpwtdtQjQhjkoybrbFA
-expires = 600                                            # Specifies duration after which the signature included in the request is expired
-signatureversion = 3                                     # Specifies the signature version to allow the client to force a specific signature version
+# Credentials to use to run -benchmark & -create. Name should be "admin" for -create
+[admin]
+apikey = x2glnzn09L_gCU5LFxz_2ph7RNZQ81HPrQlRiHKDv1TnjaJAoyNnhPZR65YM_mxj2YSaKLKTFPM_849EaVg2dg
+secretkey = BYAJ3_K_voCLE2CBbmweZu5dUmGCokshMg9xFb9qabOogkBPS8ARk6djrQT8w-XAsiDTDMUBYBmQsYqXeuaMKA
+# Specifies duration after which the signature included in the request is expired
+expires = 600
+# Specifies the signature version to allow the client to force a specific signature version
+signatureversion = 3
 
-[user]                                                   # Profile name. If the name is not "admin", then the profile will be ignored for -create
-apikey = 
-secretkey = 
+# Profile name. If the name is not "admin", then the profile will be ignored for -create
+[user]
+apikey =
+secretkey =
 expires = 600
 signatureversion = 3
 
 [domainadmin]
-apikey = 
-secretkey = 
+apikey =
+secretkey =
 expires = 600
 signatureversion = 3
 
