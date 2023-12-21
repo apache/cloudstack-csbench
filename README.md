@@ -22,7 +22,7 @@ go build
 
 Setup a config file. Check the sample config file [here](./config/config).
 
-```ini
+```
 # URL of the CloudStack API endpoint
 url = http://localhost:8080/client/api/
 # Number of times to run the test. Used only for -benchmark
@@ -62,7 +62,7 @@ signatureversion = 3
 ```
 
 
-```bash
+```
 $ csbench -h
 Usage: go run csmetrictool.go -dbprofile <DB profile number>
 Options:
