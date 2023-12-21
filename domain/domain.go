@@ -95,12 +95,17 @@ func ListAccounts(cs *cloudstack.CloudStackClient, domainId string) []*cloudstac
 func UpdateLimits(cs *cloudstack.CloudStackClient, account *cloudstack.Account) bool {
 	for i := 0; i <= 11; i++ {
 		p := cs.Limit.NewUpdateResourceLimitParams(i)
-		p.SetAccount(account.Name)
 		p.SetDomainid(account.Domainid)
 		p.SetMax(-1)
 		_, err := cs.Limit.UpdateResourceLimit(p)
 		if err != nil {
-			log.Printf("Failed to update resource limit due to: %v", err)
+			log.Printf("Failed to update domain's resource limit due to: %v", err)
+			return false
+		}
+		p.SetAccount(account.Name)
+		_, err = cs.Limit.UpdateResourceLimit(p)
+		if err != nil {
+			log.Printf("Failed to update account's resource limit due to: %v", err)
 			return false
 		}
 	}
