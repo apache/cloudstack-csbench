@@ -198,7 +198,7 @@ func main() {
 	networkFlag := flag.Bool("network", false, "Create shared network in all subdomains")
 	vmFlag := flag.Bool("vm", false, "Deploy VMs in all networks in the subdomains")
 	volumeFlag := flag.Bool("volume", false, "Create and attach Volumes to VMs")
-	tearDown := flag.Bool("teardown", false, "Tear down all subdomains")
+	tearDown := flag.Bool("teardown", false, "Tear down resources")
 	workers := flag.Int("workers", 10, "Number of workers to use while creating resources")
 	format := flag.String("format", "table", "Format of the report (csv, tsv, table). Valid only for create")
 	outputFile := flag.String("output", "", "Path to output file. Valid only for create")
@@ -214,8 +214,16 @@ func main() {
 		log.Fatal("Please provide one of the following options: -create, -benchmark, -teardown")
 	}
 
+	if *create && *tearDown {
+		log.Fatal("Please provide only one of the following options: -create, -teardown")
+	}
+
 	if *create && !(*domainFlag || *limitsFlag || *networkFlag || *vmFlag || *volumeFlag) {
 		log.Fatal("Please provide one of the following options with create: -domain, -limits, -network, -vm, -volume")
+	}
+
+	if *tearDown && !(*domainFlag || *networkFlag || *vmFlag || *volumeFlag) {
+		log.Fatal("Please provide one of the following options with teardown: -domain, -limits, -network, -vm, -volume")
 	}
 
 	switch *format {
@@ -240,6 +248,11 @@ func main() {
 		generateReport(results, *format, *outputFile)
 	}
 
+	if *tearDown {
+		results := tearDownEnv(domainFlag, networkFlag, vmFlag, volumeFlag, workers)
+		generateReport(results, *format, *outputFile)
+	}
+
 	if *benchmark {
 		log.Infof("\nStarted benchmarking the CloudStack environment [%s]", apiURL)
 
@@ -258,9 +271,6 @@ func main() {
 		log.Infof("Done with benchmarking the CloudStack environment [%s]", apiURL)
 	}
 
-	if *tearDown {
-		tearDownEnv()
-	}
 }
 
 func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bool, workers *int) map[string][]*Result {
@@ -519,20 +529,193 @@ func createVolumes(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 	return res
 }
 
-func tearDownEnv() {
-	parentDomain := config.ParentDomainId
+func tearDownEnv(domainFlag, networkFlag, vmFlag, volumeFlag *bool, workers *int) map[string][]*Result {
 	apiURL := config.URL
 
 	for _, profile := range profiles {
 		userProfileName := profile.Name
 		if userProfileName == "admin" {
 			cs := cloudstack.NewAsyncClient(apiURL, profile.ApiKey, profile.SecretKey, false)
-			domains := domain.ListSubDomains(cs, parentDomain)
-			log.Infof("Deleting %d domains", len(domains))
-			for _, subdomain := range domains {
-				domain.DeleteDomain(cs, subdomain.Id)
+
+			var results = make(map[string][]*Result)
+
+			if *vmFlag {
+				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
+				results["vm-destroy"] = destroyVms(workerPool, cs, config.ParentDomainId)
 			}
-			break
+
+			if *volumeFlag {
+				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
+				results["volume-delete"] = deleteVolumes(workerPool, cs, config.ParentDomainId)
+			}
+
+			if *networkFlag {
+				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
+				results["network-delete"] = deleteNetworks(workerPool, cs, config.ParentDomainId)
+			}
+
+			if *domainFlag {
+				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
+				results["domain-delete"] = deleteDomains(workerPool, cs, config.ParentDomainId)
+			}
+
+			return results
 		}
 	}
+	return nil
+}
+
+func destroyVms(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+	log.Infof("Fetching subdomains & accounts for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, parentDomainId)
+	var allVMs []*cloudstack.VirtualMachine
+	for _, dmn := range domains {
+		vms, err := vm.ListVMs(cs, dmn.Id)
+		if err != nil {
+			log.Warn("Error listing VMs: ", err)
+			continue
+		}
+		allVMs = append(allVMs, vms...)
+	}
+
+	progressMarker := int(math.Ceil(float64(len(allVMs) / 10.0)))
+	start := time.Now()
+
+	log.Infof("Destroying %d VMs", len(allVMs))
+
+	for i, virtualMachine := range allVMs {
+		virtualMachine := virtualMachine
+		if i%progressMarker == 0 {
+			log.Infof("Destroyed %d VMs", i+1)
+		}
+
+		workerPool.Go(func() *Result {
+			taskStart := time.Now()
+			err := vm.DestroyVm(cs, virtualMachine.Id)
+			if err != nil {
+				return &Result{
+					Success:  false,
+					Duration: time.Since(taskStart).Seconds(),
+				}
+			}
+			return &Result{
+				Success:  true,
+				Duration: time.Since(taskStart).Seconds(),
+			}
+		})
+	}
+
+	res := workerPool.Wait()
+	log.Infof("Destroyed %d VMs in %.2f seconds", len(allVMs), time.Since(start).Seconds())
+	return res
+}
+
+func deleteNetworks(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+	log.Infof("Fetching subdomains & accounts for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, parentDomainId)
+
+	log.Infof("Fetching networks for subdomains in domain %s", parentDomainId)
+	var allNetworks []*cloudstack.Network
+	for _, domain := range domains {
+		network, _ := network.ListNetworks(cs, domain.Id)
+		allNetworks = append(allNetworks, network...)
+	}
+
+	progressMarker := int(math.Ceil(float64(len(allNetworks)) / 10.0))
+	start := time.Now()
+	log.Infof("Deleting %d networks", len(allNetworks))
+	for i, net := range allNetworks {
+		net := net
+		if (i+1)%progressMarker == 0 {
+			log.Infof("Deleted %d networks", i+1)
+		}
+		workerPool.Go(func() *Result {
+			taskStart := time.Now()
+			resp, err := network.DeleteNetwork(cs, net.Id)
+			if err != nil || !resp {
+				return &Result{
+					Success:  false,
+					Duration: time.Since(taskStart).Seconds(),
+				}
+			}
+			return &Result{
+				Success:  true,
+				Duration: time.Since(taskStart).Seconds(),
+			}
+		})
+	}
+	res := workerPool.Wait()
+	log.Infof("Deleted %d networks in %.2f seconds", len(allNetworks), time.Since(start).Seconds())
+	return res
+}
+
+func deleteVolumes(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+	log.Infof("Fetching subdomains & accounts for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, parentDomainId)
+
+	log.Infof("Fetching volumes for subdomains in domain %s", parentDomainId)
+	var allVolumes []*cloudstack.Volume
+	for _, domain := range domains {
+		volumes, _ := volume.ListVolumes(cs, domain.Id)
+		allVolumes = append(allVolumes, volumes...)
+	}
+
+	progressMarker := int(math.Ceil(float64(len(allVolumes)) / 10.0))
+	start := time.Now()
+	log.Infof("Deleting %d volumes", len(allVolumes))
+	for i, vol := range allVolumes {
+		vol := vol
+		if (i+1)%progressMarker == 0 {
+			log.Infof("Deleted %d volumes", i+1)
+		}
+		workerPool.Go(func() *Result {
+			taskStart := time.Now()
+			_, err := volume.DestroyVolume(cs, vol.Id)
+			if err != nil {
+				return &Result{
+					Success:  false,
+					Duration: time.Since(taskStart).Seconds(),
+				}
+			}
+			return &Result{
+				Success:  true,
+				Duration: time.Since(taskStart).Seconds(),
+			}
+		})
+	}
+	res := workerPool.Wait()
+	log.Infof("Deleted %d volumes in %.2f seconds", len(allVolumes), time.Since(start).Seconds())
+	return res
+}
+
+func deleteDomains(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+	log.Infof("Fetching subdomains for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, parentDomainId)
+
+	progressMarker := int(math.Ceil(float64(len(domains)) / 10.0))
+	start := time.Now()
+	log.Infof("Deleting %d domains", len(domains))
+	for i, dmn := range domains {
+		dmn := dmn
+		if (i+1)%progressMarker == 0 {
+			log.Infof("Deleted %d domains", i+1)
+		}
+		workerPool.Go(func() *Result {
+			taskStart := time.Now()
+			resp, err := domain.DeleteDomain(cs, dmn.Id)
+			if !resp || err != nil {
+				return &Result{
+					Success:  false,
+					Duration: time.Since(taskStart).Seconds(),
+				}
+			}
+			return &Result{
+				Success:  true,
+				Duration: time.Since(taskStart).Seconds(),
+			}
+		})
+	}
+	res := workerPool.Wait()
+	log.Infof("Deleted %d domains in %.2f seconds", len(domains), time.Since(start).Seconds())
+	return res
 }

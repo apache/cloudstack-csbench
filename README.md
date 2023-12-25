@@ -47,6 +47,8 @@ parentdomainid = <domain id>
 numdomains = 2
 # Number of VMs to create per domain. Used only for -create
 numvms = 2
+# Whether to start the VMs after creation. Used only for -create
+startvm = true
 # Number of volumes to create & attach per VM. Used only for -create
 numvolumes = 2
 

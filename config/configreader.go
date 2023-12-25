@@ -47,6 +47,7 @@ var DiskOfferingId = ""
 var TemplateId = ""
 var ParentDomainId = ""
 var NumDomains = 0
+var StartVM = true
 var NumVms = 0
 var NumVolumes = 0
 
@@ -142,6 +143,12 @@ func ReadProfiles(filePath string) (map[int]*Profile, error) {
 					_, err := fmt.Sscanf(value, "%d", &numVms)
 					if err == nil {
 						NumVms = numVms
+					}
+				case "startvm":
+					var startvm bool
+					_, err := fmt.Sscanf(value, "%t", &startvm)
+					if err == nil {
+						startVM = startvm
 					}
 				case "numvolumes":
 					var numVolumes int

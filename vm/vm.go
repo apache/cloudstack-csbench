@@ -20,8 +20,6 @@ package vm
 import (
 	"csbench/config"
 	"csbench/utils"
-	"encoding/json"
-	"fmt"
 	"log"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
@@ -48,6 +46,7 @@ func DeployVm(cs *cloudstack.CloudStackClient, domainId string, networkId string
 	p.SetNetworkids([]string{networkId})
 	p.SetName(vmName)
 	p.SetAccount(account)
+	p.SetStartvm(config.StartVM)
 
 	resp, err := cs.VirtualMachine.DeployVirtualMachine(p)
 	if err != nil {
@@ -57,27 +56,14 @@ func DeployVm(cs *cloudstack.CloudStackClient, domainId string, networkId string
 	return resp, nil
 }
 
-func DestroyVm(cs *cloudstack.CloudStackClient, vmId string) {
+func DestroyVm(cs *cloudstack.CloudStackClient, vmId string) error {
 
 	deleteParams := cs.VirtualMachine.NewDestroyVirtualMachineParams(vmId)
 	deleteParams.SetExpunge(true)
-	delResp, err := cs.VirtualMachine.DestroyVirtualMachine(deleteParams)
+	_, err := cs.VirtualMachine.DestroyVirtualMachine(deleteParams)
 	if err != nil {
 		log.Printf("Failed to destroy Vm with Id %s due to %v", vmId, err)
+		return err
 	}
-	r, err := parseResponse(delResp)
-	if err != nil {
-		log.Printf("Failed to parse destroy vm response due to %v", err)
-		return
-	}
-	fmt.Printf("Destroy Vm response: %v\n\n", string(r))
-}
-
-func parseResponse(resp interface{}) ([]byte, error) {
-	b, err := json.MarshalIndent(resp, "", "    ")
-	if err != nil {
-		log.Printf("%v", err)
-		return nil, err
-	}
-	return b, nil
+	return nil
 }
