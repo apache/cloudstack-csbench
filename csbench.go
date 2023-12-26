@@ -194,19 +194,31 @@ func main() {
 	dbprofile := flag.Int("dbprofile", 0, "DB profile number")
 	create := flag.Bool("create", false, "Create resources")
 	benchmark := flag.Bool("benchmark", false, "Benchmark list APIs")
-	domainFlag := flag.Bool("domain", false, "Create subdomains and accounts")
+	domainFlag := flag.Bool("domain", false, "Works with -create & -teardown\n\t"+
+		"-create - Create subdomains and accounts\n\t"+
+		"-teardown - Delete all subdomains and accounts")
 	limitsFlag := flag.Bool("limits", false, "Update limits to -1 for subdomains and accounts")
-	networkFlag := flag.Bool("network", false, "Create shared network in all subdomains")
-	vmFlag := flag.Bool("vm", false, "Deploy VMs in all networks in the subdomains")
-	volumeFlag := flag.Bool("volume", false, "Create and attach Volumes to VMs")
-	vmAction := flag.String("vmaction", "", "Action to perform on VMs. start/stop/reboot/toggle/random")
+	networkFlag := flag.Bool("network", false, "Works with -create & -teardown\n\t"+
+		"-create - Create shared network in all subdomains\n\t"+
+		"-teardown - Delete all networks in the subdomains")
+	vmFlag := flag.Bool("vm", false, "Works with -create & -teardown\n\t"+
+		"-create - Deploy VMs in all networks in the subdomains\n\t"+
+		"-teardown - Delete all VMs in the subdomains")
+	volumeFlag := flag.Bool("volume", false, "Works with -create & -teardown\n\t"+
+		"-create - Create and attach Volumes to VMs\n\t"+
+		"-teardown - Delete all volumes in the subdomains")
+	vmAction := flag.String("vmaction", "", "Action to perform on VMs. Options:\n\t"+
+		"start - start all VMs\n\t"+
+		"stop - stop all VMs\n\t"+
+		"reboot - reboot all running VMs\n\t"+
+		"toggle - stop running VMs and start stopped VMs\n\t"+
+		"random - Randomly toggle VMs")
 	tearDown := flag.Bool("teardown", false, "Tear down resources")
 	workers := flag.Int("workers", 10, "Number of workers to use while creating resources")
 	format := flag.String("format", "table", "Format of the report (csv, tsv, table). Valid only for create")
 	outputFile := flag.String("output", "", "Path to output file. Valid only for create")
 	configFile := flag.String("config", "config/config", "Path to config file")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: go run csmetrictool.go -dbprofile <DB profile number>\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 	}
@@ -502,7 +514,7 @@ func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 
 			workerPool.Go(func() *Result {
 				taskStart := time.Now()
-				_, err := network.CreateNetwork(cs, dmn.Id, counter)
+				_, err := network.CreateNetwork(cs, dmn.Id, counter-1)
 				if err != nil {
 					return &Result{
 						Success:  false,

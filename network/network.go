@@ -97,9 +97,8 @@ func getRandomVlan() int {
 // subnet mask on the basis of an integer
 // Generate CIDRs from 10.10.0.0
 // IPs should be incremental. For 22 submask, the IPs should be generated as follows:
-// for 0 -> 	10.10.0.0 - 10.10.3.255
-// for 1 ->     10.10.4.0 - 10.10.7.255
-// for 2 ->		10.10.8.0 - 10.10.11.255
+// for 0 -> 	10.10.0.1, 255.255.252.0, 10.10.0.2 - 10.10.3.255
+// for 1 ->     10.10.4.1, 255.255.252.0, 10.10.4.2 - 10.10.7.255
 
 func generateNetworkDetails(address string, count int, submask int) (string, string, string, string, error) {
 	ip, err := netip.ParseAddr(address)
@@ -115,11 +114,18 @@ func generateNetworkDetails(address string, count int, submask int) (string, str
 	startIPInt32 := gatewayInt32 + 1
 	endIPInt32 := gatewayInt32 + incr - 2
 
-	return getIPFromUint32(gatewayInt32), getIPFromUint32(uint32(math.Pow(2, 32) - math.Pow(2, 32-float64(submask)))), getIPFromUint32(startIPInt32), getIPFromUint32(endIPInt32), nil
+	return getIPFromUint32(gatewayInt32),
+		getIPFromUint32(uint32(math.Pow(2, 32) - math.Pow(2, 32-float64(submask)))),
+		getIPFromUint32(startIPInt32),
+		getIPFromUint32(endIPInt32),
+		nil
 }
 
 func getIPFromUint32(ip uint32) string {
 	IP := netip.Addr{}
-	IP.UnmarshalBinary([]byte{byte(ip >> 24), byte(ip >> 16), byte(ip >> 8), byte(ip)})
+	err := IP.UnmarshalBinary([]byte{byte(ip >> 24), byte(ip >> 16), byte(ip >> 8), byte(ip)})
+	if err != nil {
+		log.Printf("Failed to convert uint32 to ip due to %v", err)
+	}
 	return IP.String()
 }

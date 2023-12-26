@@ -22,8 +22,11 @@ parentdomainid = e24ab778-9fec-11ee-8fa0-7404f10c2178
 numdomains = 5
 # Number of networks to create per domain. Used only for -create
 numnetworks = 1
+# Subnet to use for the networks. Used only for -network with -create
 subnet = 10.0.0.0
+# Subnet mask to use for the networks. Used only for -network with -create
 submask = 22
+# Randomly allocated a VLAN from the range specified below. Used only for -network with -create
 vlanrange = 80-1000
 # Number of VMs to create per domain. Used only for -create
 numvms = 1
@@ -34,8 +37,8 @@ numvolumes = 1
 
 # Credentials to use to run -benchmark & -create. Name should be "admin" for -create
 [admin]
-apikey = _QtHyvUyoVvwQKJ8dPtW7fRsdgenXWO0PyjkKyo1D8CHCMSNIMEYmOJUe57_y7JXB3OKJXF3QgZPNy80F4w1yg
-secretkey = dqbvFeuqbctcTQF6FwfLCoJ8JR7tRAOMAywWYVR9Su9KG60iKXxBlISfaBqXtBUCVmnw33FD1Eo2DanTAv1RHw
+apikey = x2glnzn09L_gCU5LFxz_2ph7RNZQ81HPrQlRiHKDv1TnjaJAoyNnhPZR65YM_mxj2YSaKLKTFPM_849EaVg2dg
+secretkey = BYAJ3_K_voCLE2CBbmweZu5dUmGCokshMg9xFb9qabOogkBPS8ARk6djrQT8w-XAsiDTDMUBYBmQsYqXeuaMKA
 # Specifies duration after which the signature included in the request is expired
 expires = 600
 # Specifies the signature version to allow the client to force a specific signature version

@@ -45,6 +45,14 @@ networkofferingid = <network offering id>
 parentdomainid = <domain id>
 # Number of domains to create. Creates a shared network for each domain. Used only for -create
 numdomains = 2
+# Number of networks to create per domain. Used only for -create
+numnetworks = 1
+# Subnet to use for the networks. Used only for -network with -create
+subnet = 10.0.0.0
+# Subnet mask to use for the networks. Used only for -network with -create
+submask = 22
+# Randomly allocated a VLAN from the range specified below. Used only for -network with -create
+vlanrange = 80-1000
 # Number of VMs to create per domain. Used only for -create
 numvms = 2
 # Whether to start the VMs after creation. Used only for -create
@@ -66,7 +74,6 @@ signatureversion = 3
 
 ```
 $ csbench -h
-Usage: go run csmetrictool.go -dbprofile <DB profile number>
 Options:
   -benchmark
         Benchmark list APIs
@@ -77,21 +84,36 @@ Options:
   -dbprofile int
         DB profile number
   -domain
-        Create subdomains and accounts
+        Works with -create & -teardown
+                -create - Create subdomains and accounts
+                -teardown - Delete all subdomains and accounts
   -format string
         Format of the report (csv, tsv, table). Valid only for create (default "table")
   -limits
         Update limits to -1 for subdomains and accounts
   -network
-        Create shared network in all subdomains
+        Works with -create & -teardown
+                -create - Create shared network in all subdomains
+                -teardown - Delete all networks in the subdomains
   -output string
         Path to output file. Valid only for create
   -teardown
-        Tear down all subdomains
+        Tear down resources
   -vm
-        Deploy VMs in all networks in the subdomains
+        Works with -create & -teardown
+                -create - Deploy VMs in all networks in the subdomains
+                -teardown - Delete all VMs in the subdomains
+  -vmaction string
+        Action to perform on VMs. Options:
+                start - start all VMs
+                stop - stop all VMs
+                reboot - reboot all running VMs
+                toggle - stop running VMs and start stopped VMs
+                random - Randomly toggle VMs
   -volume
-        Create and attach Volumes to VMs
+        Works with -create & -teardown
+                -create - Create and attach Volumes to VMs
+                -teardown - Delete all volumes in the subdomains
   -workers int
         Number of workers to use while creating resources (default 10)
 ```
@@ -109,6 +131,20 @@ This will create the resources under the domain specified in the config file. If
 By default, the number of workers for executing the setup operation is 10. This can be changed by passing the -workers flag followed by the number of workers to be used.
 
 By default the results of setting up the environment are printed out to stdout, if you want to save the results to a file, you can pass the `-output` flag followed by the path to the file. And use `-format` flag to specify the format of the report (`csv`, `tsv`, `table`).
+
+## Benchmarking actions on VMs
+This mode of operation is designed to benchmark the actions on VMs. The actions that can be benchmarked are `start`, `stop`, `reboot`.
+
+To execute this mode, run the following command followed by the type of action to be benchmarked:
+```bash
+csbench -vmaction <action>
+```
+Where action can be:
+  - `start` - start all VMs
+  - `stop` - stop all VMs
+  - `reboot` - reboot all running VMs
+  - `toggle` - stop running VMs and start stopped VMs
+  - `random` - Randomly toggle VMs
 
 ## Benchmarking list APIs
 By internally executing a series of APIs, this tool meticulously measures the response times for various users, page sizes, and keyword combinations. 
