@@ -40,6 +40,7 @@ func CreateDomain(cs *cloudstack.CloudStackClient, parentDomainId string) (*clou
 
 func DeleteDomain(cs *cloudstack.CloudStackClient, domainId string) (bool, error) {
 	deleteParams := cs.Domain.NewDeleteDomainParams(domainId)
+	deleteParams.SetCleanup(true)
 	delResp, err := cs.Domain.DeleteDomain(deleteParams)
 	if err != nil {
 		log.Printf("Failed to delete domain with id  %s due to %v", domainId, err)

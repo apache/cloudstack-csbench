@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -198,6 +199,7 @@ func main() {
 	networkFlag := flag.Bool("network", false, "Create shared network in all subdomains")
 	vmFlag := flag.Bool("vm", false, "Deploy VMs in all networks in the subdomains")
 	volumeFlag := flag.Bool("volume", false, "Create and attach Volumes to VMs")
+	vmAction := flag.String("vmaction", "", "Action to perform on VMs. start/stop/reboot/toggle/random")
 	tearDown := flag.Bool("teardown", false, "Tear down resources")
 	workers := flag.Int("workers", 10, "Number of workers to use while creating resources")
 	format := flag.String("format", "table", "Format of the report (csv, tsv, table). Valid only for create")
@@ -210,12 +212,16 @@ func main() {
 	}
 	flag.Parse()
 
-	if !(*create || *benchmark || *tearDown) {
-		log.Fatal("Please provide one of the following options: -create, -benchmark, -teardown")
+	if !(*create || *benchmark || *tearDown || *vmAction != "") {
+		log.Fatal("Please provide one of the following options: -create, -benchmark, -vmaction, -teardown")
 	}
 
-	if *create && *tearDown {
-		log.Fatal("Please provide only one of the following options: -create, -teardown")
+	if *create && *tearDown && *vmAction == "" {
+		log.Fatal("Please provide only one of the following options: -create, -teardown, -vmaction")
+	}
+
+	if *vmAction != "" && !(*vmAction == "start" || *vmAction == "stop" || *vmAction == "reboot" || *vmAction == "toggle" || *vmAction == "random") {
+		log.Fatal("Invalid VM action. Please provide one of the following: start, stop, reboot, toggle, random")
 	}
 
 	if *create && !(*domainFlag || *limitsFlag || *networkFlag || *vmFlag || *volumeFlag) {
@@ -248,6 +254,11 @@ func main() {
 		generateReport(results, *format, *outputFile)
 	}
 
+	if *vmAction != "" {
+		results := executeVMAction(vmAction, workers)
+		generateReport(results, *format, *outputFile)
+	}
+
 	if *tearDown {
 		results := tearDownEnv(domainFlag, networkFlag, vmFlag, volumeFlag, workers)
 		generateReport(results, *format, *outputFile)
@@ -271,6 +282,95 @@ func main() {
 		log.Infof("Done with benchmarking the CloudStack environment [%s]", apiURL)
 	}
 
+}
+
+func executeVMAction(vmAction *string, workers *int) map[string][]*Result {
+
+	parentDomainId := config.ParentDomainId
+	var cs *cloudstack.CloudStackClient
+	workerPool := pool.NewWithResults[map[string]*Result]().WithMaxGoroutines(*workers)
+	for _, profile := range profiles {
+		if profile.Name == "admin" {
+			cs = cloudstack.NewAsyncClient(config.URL, profile.ApiKey, profile.SecretKey, false)
+		}
+	}
+
+	if cs == nil {
+		log.Fatal("Failed to find admin profile")
+	}
+
+	log.Infof("Fetching all VMs in subdomains for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, config.ParentDomainId)
+	var allVMs []*cloudstack.VirtualMachine
+	for _, dmn := range domains {
+		vms, err := vm.ListVMs(cs, dmn.Id)
+		if err != nil {
+			log.Warn("Error listing VMs: ", err)
+			continue
+		}
+		allVMs = append(allVMs, vms...)
+	}
+
+	progressMarker := int(math.Ceil(float64(len(allVMs)) / 10.0))
+	start := time.Now()
+
+	for i, virtualMachine := range allVMs {
+		virtualMachine := virtualMachine
+
+		if (i+1)%progressMarker == 0 {
+			log.Infof("Executed %d VMs", i+1)
+		}
+
+		if *vmAction == "random" && rand.Intn(100) < 50 {
+			continue
+		}
+
+		workerPool.Go(func() map[string]*Result {
+			taskStart := time.Now()
+			result := false
+			action := "skipped"
+			switch virtualMachine.State {
+			case "Running":
+				if *vmAction == "stop" || *vmAction == "toggle" || *vmAction == "random" {
+					err := vm.StopVM(cs, virtualMachine.Id)
+					result = err == nil
+					action = "stop"
+				} else if *vmAction == "reboot" {
+					err := vm.RebootVM(cs, virtualMachine.Id)
+					result = err == nil
+					action = "reboot"
+				}
+			case "Stopped":
+				if *vmAction == "start" || *vmAction == "toggle" || *vmAction == "random" {
+					err := vm.StartVM(cs, virtualMachine.Id)
+					result = err == nil
+					action = "start"
+				} else if *vmAction == "reboot" {
+					result = false
+					action = "stop"
+				}
+			}
+			return map[string]*Result{
+				action: {
+					Success:  result,
+					Duration: time.Since(taskStart).Seconds(),
+				},
+			}
+		})
+	}
+	res := workerPool.Wait()
+	log.Infof("Executed %s on %d VMs in %.2f seconds", *vmAction, len(allVMs), time.Since(start).Seconds())
+	var results = make(map[string][]*Result)
+	for _, result := range res {
+		for key, value := range result {
+			key = "vmaction-" + key
+			if results[key] == nil {
+				results[key] = make([]*Result, 0)
+			}
+			results[key] = append(results[key], value)
+		}
+	}
+	return results
 }
 
 func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bool, workers *int) map[string][]*Result {
@@ -578,7 +678,7 @@ func destroyVms(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackC
 		allVMs = append(allVMs, vms...)
 	}
 
-	progressMarker := int(math.Ceil(float64(len(allVMs) / 10.0)))
+	progressMarker := int(math.Ceil(float64(len(allVMs)) / 10.0))
 	start := time.Now()
 
 	log.Infof("Destroying %d VMs", len(allVMs))

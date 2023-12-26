@@ -77,3 +77,33 @@ func DestroyVm(cs *cloudstack.CloudStackClient, vmId string) error {
 	}
 	return nil
 }
+
+func StartVM(cs *cloudstack.CloudStackClient, vmId string) error {
+	p := cs.VirtualMachine.NewStartVirtualMachineParams(vmId)
+	_, err := cs.VirtualMachine.StartVirtualMachine(p)
+	if err != nil {
+		log.Printf("Failed to start vm with id %s due to %v", vmId, err)
+		return err
+	}
+	return nil
+}
+
+func StopVM(cs *cloudstack.CloudStackClient, vmId string) error {
+	p := cs.VirtualMachine.NewStopVirtualMachineParams(vmId)
+	_, err := cs.VirtualMachine.StopVirtualMachine(p)
+	if err != nil {
+		log.Printf("Failed to stop vm with id %s due to %v", vmId, err)
+		return err
+	}
+	return nil
+}
+
+func RebootVM(cs *cloudstack.CloudStackClient, vmId string) error {
+	p := cs.VirtualMachine.NewRebootVirtualMachineParams(vmId)
+	_, err := cs.VirtualMachine.RebootVirtualMachine(p)
+	if err != nil {
+		log.Printf("Failed to reboot vm with id %s due to %v", vmId, err)
+		return err
+	}
+	return nil
+}
