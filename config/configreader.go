@@ -53,8 +53,8 @@ var Submask = 22
 var VlanStart = 80
 var VlanEnd = 1000
 var StartVM = true
-var NumVms = 0
-var NumVolumes = 0
+var NumVms = 1
+var NumVolumes = 1
 
 func ReadProfiles(filePath string) (map[int]*Profile, error) {
 	file, err := os.Open(filePath)

@@ -41,7 +41,7 @@ func ListVolumes(cs *cloudstack.CloudStackClient, domainId string) ([]*cloudstac
 			return result, err
 		}
 		result = append(result, resp.Volumes...)
-		if len(resp.Volumes) < resp.Count {
+		if len(result) < resp.Count {
 			page++
 		} else {
 			break

@@ -39,7 +39,7 @@ func ListVMs(cs *cloudstack.CloudStackClient, domainId string) ([]*cloudstack.Vi
 			return result, err
 		}
 		result = append(result, resp.VirtualMachines...)
-		if len(resp.VirtualMachines) < resp.Count {
+		if len(result) < resp.Count {
 			page++
 		} else {
 			break

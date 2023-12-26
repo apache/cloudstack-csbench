@@ -20,12 +20,17 @@ networkofferingid = 3e0e6640-93ca-4429-9e9a-50545db793ad
 parentdomainid = e24ab778-9fec-11ee-8fa0-7404f10c2178
 # Number of domains to create. Creates a shared network for each domain. Used only for -create
 numdomains = 5
+# Number of networks to create per domain. Used only for -create
+numnetworks = 1
+subnet = 10.0.0.0
+submask = 22
+vlanrange = 80-1000
 # Number of VMs to create per domain. Used only for -create
-numvms = 5
+numvms = 1
 # Whether to start the VMs after creation. Used only for -create
 startvm = true
 # Number of volumes to create & attach per VM. Used only for -create
-numvolumes = 2
+numvolumes = 1
 
 # Credentials to use to run -benchmark & -create. Name should be "admin" for -create
 [admin]

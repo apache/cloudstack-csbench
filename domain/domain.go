@@ -78,7 +78,7 @@ func ListSubDomains(cs *cloudstack.CloudStackClient, domainId string) []*cloudst
 			return result
 		}
 		result = append(result, resp.DomainChildren...)
-		if len(resp.DomainChildren) < resp.Count {
+		if len(result) < resp.Count {
 			page++
 		} else {
 			break
@@ -101,7 +101,7 @@ func ListAccounts(cs *cloudstack.CloudStackClient, domainId string) []*cloudstac
 			return result
 		}
 		result = append(result, resp.Accounts...)
-		if len(resp.Accounts) < resp.Count {
+		if len(result) < resp.Count {
 			page++
 		} else {
 			break

@@ -45,7 +45,7 @@ func ListNetworks(cs *cloudstack.CloudStackClient, domainId string) ([]*cloudsta
 			return result, err
 		}
 		result = append(result, resp.Networks...)
-		if len(resp.Networks) < resp.Count {
+		if len(result) < resp.Count {
 			page++
 		} else {
 			break
