@@ -27,16 +27,27 @@ import (
 )
 
 func ListVolumes(cs *cloudstack.CloudStackClient, domainId string) ([]*cloudstack.Volume, error) {
+	result := make([]*cloudstack.Volume, 0)
+	page := 1
 	p := cs.Volume.NewListVolumesParams()
 	p.SetDomainid(domainId)
-	p.SetPage(1)
-	resp, err := cs.Volume.ListVolumes(p)
+	p.SetPagesize(config.PageSize)
+	for {
+		p.SetPage(page)
+		resp, err := cs.Volume.ListVolumes(p)
 
-	if err != nil {
-		log.Printf("Failed to create volume due to: %v", err)
-		return nil, err
+		if err != nil {
+			log.Printf("Failed to list volume due to: %v", err)
+			return result, err
+		}
+		result = append(result, resp.Volumes...)
+		if len(resp.Volumes) < resp.Count {
+			page++
+		} else {
+			break
+		}
 	}
-	return resp.Volumes, nil
+	return result, nil
 }
 
 func CreateVolume(cs *cloudstack.CloudStackClient, domainId string, account string) (*cloudstack.CreateVolumeResponse, error) {

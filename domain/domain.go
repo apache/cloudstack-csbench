@@ -64,31 +64,49 @@ func CreateAccount(cs *cloudstack.CloudStackClient, domainId string) (*cloudstac
 }
 
 func ListSubDomains(cs *cloudstack.CloudStackClient, domainId string) []*cloudstack.DomainChildren {
+	result := make([]*cloudstack.DomainChildren, 0)
+	page := 1
 	p := cs.Domain.NewListDomainChildrenParams()
 	p.SetId(domainId)
-	p.SetPage(1)
 	p.SetPagesize(config.PageSize)
-	// TODO: Handle pagination to get all domains
-	resp, err := cs.Domain.ListDomainChildren(p)
-	if err != nil {
-		log.Printf("Failed to list domains due to: %v", err)
-		return nil
+	for {
+		p.SetPage(page)
+		resp, err := cs.Domain.ListDomainChildren(p)
+		if err != nil {
+			log.Printf("Failed to list domains due to: %v", err)
+			return result
+		}
+		result = append(result, resp.DomainChildren...)
+		if len(resp.DomainChildren) < resp.Count {
+			page++
+		} else {
+			break
+		}
 	}
-	return resp.DomainChildren
+	return result
 }
 
 func ListAccounts(cs *cloudstack.CloudStackClient, domainId string) []*cloudstack.Account {
+	result := make([]*cloudstack.Account, 0)
+	page := 1
 	p := cs.Account.NewListAccountsParams()
 	p.SetDomainid(domainId)
-	p.SetPage(1)
 	p.SetPagesize(config.PageSize)
-	// TODO: Handle pagination to get all domains
-	resp, err := cs.Account.ListAccounts(p)
-	if err != nil {
-		log.Printf("Failed to list domains due to: %v", err)
-		return nil
+	for {
+		p.SetPage(page)
+		resp, err := cs.Account.ListAccounts(p)
+		if err != nil {
+			log.Printf("Failed to list accounts due to: %v", err)
+			return result
+		}
+		result = append(result, resp.Accounts...)
+		if len(resp.Accounts) < resp.Count {
+			page++
+		} else {
+			break
+		}
 	}
-	return resp.Accounts
+	return result
 }
 
 func UpdateLimits(cs *cloudstack.CloudStackClient, account *cloudstack.Account) bool {

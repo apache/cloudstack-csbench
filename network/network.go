@@ -27,18 +27,28 @@ import (
 )
 
 func ListNetworks(cs *cloudstack.CloudStackClient, domainId string) ([]*cloudstack.Network, error) {
+	result := make([]*cloudstack.Network, 0)
+	page := 1
 	p := cs.Network.NewListNetworksParams()
 	p.SetDomainid(domainId)
 	p.SetListall(true)
 	p.SetZoneid(config.ZoneId)
-	p.SetPage(1)
 	p.SetPagesize(config.PageSize)
-	resp, err := cs.Network.ListNetworks(p)
-	if err != nil {
-		log.Printf("Failed to list networks due to %v", err)
-		return nil, err
+	for {
+		p.SetPage(page)
+		resp, err := cs.Network.ListNetworks(p)
+		if err != nil {
+			log.Printf("Failed to list networks due to %v", err)
+			return result, err
+		}
+		result = append(result, resp.Networks...)
+		if len(resp.Networks) < resp.Count {
+			page++
+		} else {
+			break
+		}
 	}
-	return resp.Networks, nil
+	return result, nil
 }
 
 func CreateNetwork(cs *cloudstack.CloudStackClient, domainId string, count int) (*cloudstack.CreateNetworkResponse, error) {

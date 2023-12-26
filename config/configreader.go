@@ -148,7 +148,7 @@ func ReadProfiles(filePath string) (map[int]*Profile, error) {
 					var startvm bool
 					_, err := fmt.Sscanf(value, "%t", &startvm)
 					if err == nil {
-						startVM = startvm
+						StartVM = startvm
 					}
 				case "numvolumes":
 					var numVolumes int

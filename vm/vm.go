@@ -26,16 +26,26 @@ import (
 )
 
 func ListVMs(cs *cloudstack.CloudStackClient, domainId string) ([]*cloudstack.VirtualMachine, error) {
+	result := make([]*cloudstack.VirtualMachine, 0)
+	page := 1
 	p := cs.VirtualMachine.NewListVirtualMachinesParams()
 	p.SetDomainid(domainId)
-	p.SetPage(1)
 	p.SetPagesize(config.PageSize)
-	resp, err := cs.VirtualMachine.ListVirtualMachines(p)
-	if err != nil {
-		log.Printf("Failed to list vm due to %v", err)
-		return nil, err
+	for {
+		p.SetPage(page)
+		resp, err := cs.VirtualMachine.ListVirtualMachines(p)
+		if err != nil {
+			log.Printf("Failed to list vm due to %v", err)
+			return result, err
+		}
+		result = append(result, resp.VirtualMachines...)
+		if len(resp.VirtualMachines) < resp.Count {
+			page++
+		} else {
+			break
+		}
 	}
-	return resp.VirtualMachines, nil
+	return result, nil
 }
 
 func DeployVm(cs *cloudstack.CloudStackClient, domainId string, networkId string, account string) (*cloudstack.DeployVirtualMachineResponse, error) {
