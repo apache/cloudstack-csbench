@@ -379,6 +379,7 @@ func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bo
 	for _, profile := range profiles {
 		if profile.Name == "admin" {
 
+			numNetworksPerDomain := config.NumNetworks
 			numVmsPerNetwork := config.NumVms
 			numVolumesPerVM := config.NumVolumes
 
@@ -398,7 +399,7 @@ func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bo
 
 			if *networkFlag {
 				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
-				results["network"] = createNetwork(workerPool, cs, config.ParentDomainId)
+				results["network"] = createNetwork(workerPool, cs, config.ParentDomainId, numNetworksPerDomain)
 			}
 
 			if *vmFlag {
@@ -483,33 +484,37 @@ func updateLimits(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStac
 	return res
 }
 
-func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string, numNetworkPerDomain int) []*Result {
 	log.Infof("Fetching subdomains for domain %s", parentDomainId)
 	domains := domain.ListSubDomains(cs, parentDomainId)
 
-	progressMarker := int(math.Ceil(float64(len(domains)) / 10.0))
+	progressMarker := int(math.Ceil(float64(len(domains)*numNetworkPerDomain) / 10.0))
 	start := time.Now()
 	log.Infof("Creating %d networks", len(domains))
 	for i, dmn := range domains {
-		if (i+1)%progressMarker == 0 {
-			log.Infof("Created %d networks", i+1)
-		}
-		i := i
-		dmn := dmn
-		workerPool.Go(func() *Result {
-			taskStart := time.Now()
-			_, err := network.CreateNetwork(cs, dmn.Id, i)
-			if err != nil {
+		for j := 1; j <= numNetworkPerDomain; j++ {
+			counter := i*j + j
+			dmn := dmn
+
+			if counter%progressMarker == 0 {
+				log.Infof("Created %d networks", counter)
+			}
+
+			workerPool.Go(func() *Result {
+				taskStart := time.Now()
+				_, err := network.CreateNetwork(cs, dmn.Id, counter)
+				if err != nil {
+					return &Result{
+						Success:  false,
+						Duration: time.Since(taskStart).Seconds(),
+					}
+				}
 				return &Result{
-					Success:  false,
+					Success:  true,
 					Duration: time.Since(taskStart).Seconds(),
 				}
-			}
-			return &Result{
-				Success:  true,
-				Duration: time.Since(taskStart).Seconds(),
-			}
-		})
+			})
+		}
 	}
 	res := workerPool.Wait()
 	log.Infof("Created %d networks in %.2f seconds", len(domains), time.Since(start).Seconds())

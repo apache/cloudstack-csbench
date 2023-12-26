@@ -21,6 +21,9 @@ import (
 	"csbench/config"
 	"csbench/utils"
 	"log"
+	"math"
+	"math/rand"
+	"net/netip"
 	"strconv"
 
 	"github.com/apache/cloudstack-go/v2/cloudstack"
@@ -54,14 +57,19 @@ func ListNetworks(cs *cloudstack.CloudStackClient, domainId string) ([]*cloudsta
 func CreateNetwork(cs *cloudstack.CloudStackClient, domainId string, count int) (*cloudstack.CreateNetworkResponse, error) {
 	netName := "Network-" + utils.RandomString(10)
 	p := cs.Network.NewCreateNetworkParams(netName, config.NetworkOfferingId, config.ZoneId)
+	gateway, netmask, startIP, endIP, err := generateNetworkDetails(config.Subnet, count, config.Submask)
+	if err != nil {
+		log.Printf("Failed to generate network details due to %v", err)
+		return nil, err
+	}
 	p.SetDomainid(domainId)
 	p.SetAcltype("Domain")
-	p.SetGateway("10.10.0.1")
-	p.SetNetmask("255.255.252.0")
+	p.SetGateway(gateway)
+	p.SetNetmask(netmask)
 	p.SetDisplaytext(netName)
-	p.SetStartip("10.10.0.2")
-	p.SetEndip("10.10.3.255")
-	p.SetVlan(strconv.Itoa(80 + count))
+	p.SetStartip(startIP)
+	p.SetEndip(endIP)
+	p.SetVlan(strconv.Itoa(getRandomVlan()))
 
 	resp, err := cs.Network.CreateNetwork(p)
 	if err != nil {
@@ -79,4 +87,39 @@ func DeleteNetwork(cs *cloudstack.CloudStackClient, networkId string) (bool, err
 		return false, err
 	}
 	return delResp.Success, nil
+}
+
+func getRandomVlan() int {
+	return config.VlanStart + rand.Intn(config.VlanEnd-config.VlanStart)
+}
+
+// A function which generates gateway, netmask, start ip and end ip for a network with the specified
+// subnet mask on the basis of an integer
+// Generate CIDRs from 10.10.0.0
+// IPs should be incremental. For 22 submask, the IPs should be generated as follows:
+// for 0 -> 	10.10.0.0 - 10.10.3.255
+// for 1 ->     10.10.4.0 - 10.10.7.255
+// for 2 ->		10.10.8.0 - 10.10.11.255
+
+func generateNetworkDetails(address string, count int, submask int) (string, string, string, string, error) {
+	ip, err := netip.ParseAddr(address)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	// Convert ip to uint32
+	ipBin, _ := ip.MarshalBinary()
+	ipUint32 := uint32(ipBin[0])<<24 | uint32(ipBin[1])<<16 | uint32(ipBin[2])<<8 | uint32(ipBin[3])
+	// Convert submask to uint32
+	incr := uint32(math.Pow(2, (32 - float64(submask))))
+	gatewayInt32 := ipUint32 + (uint32(count) * incr) + 1
+	startIPInt32 := gatewayInt32 + 1
+	endIPInt32 := gatewayInt32 + incr - 2
+
+	return getIPFromUint32(gatewayInt32), getIPFromUint32(uint32(math.Pow(2, 32) - math.Pow(2, 32-float64(submask)))), getIPFromUint32(startIPInt32), getIPFromUint32(endIPInt32), nil
+}
+
+func getIPFromUint32(ip uint32) string {
+	IP := netip.Addr{}
+	IP.UnmarshalBinary([]byte{byte(ip >> 24), byte(ip >> 16), byte(ip >> 8), byte(ip)})
+	return IP.String()
 }
