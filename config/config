@@ -7,23 +7,33 @@ page = 0
 # Max number of items to return per API call
 pagesize = 500
 # Zone to use for VMs. Used only for -create
-zoneid = d6beefe6-655e-4980-a7fe-b8e954d37029
+zoneid = 14f5f13d-06b7-4b78-bae9-f00c8e881abc
 # Template to use for VMs. Used only for -create
-templateid = 5b958213-73d9-11ee-8150-7404f10c2178
+templateid = 583e9600-9fed-11ee-8fa0-7404f10c2178
 # Service offering to use for VMs. Used only for -create
-serviceofferingid = 39f91d73-0491-43e6-9d2a-1731de959044
+serviceofferingid = 2e7419e0-8cc8-46e8-a4f9-eac3d5852d0c
 # Disk offering to use for volumes. Used only for -create
-diskofferingid = d645f7ff-0a4d-4c34-a127-74bc1b61777a
+diskofferingid = 2916d458-f686-4404-8a00-3704da0ee5b5
 # Shared network offering ID. Used only for -create
-networkofferingid = b3161697-b891-4708-ab10-696c44472764
+networkofferingid = 3e0e6640-93ca-4429-9e9a-50545db793ad
 # Domain ID of the parent domain to create the subdomains under. Used only for -create
-parentdomainid = e46a3820-9e3e-11ee-8fa0-7404f10c2178
+parentdomainid = e24ab778-9fec-11ee-8fa0-7404f10c2178
 # Number of domains to create. Creates a shared network for each domain. Used only for -create
-numdomains = 2
+numdomains = 5
+# Number of networks to create per domain. Used only for -create
+numnetworks = 1
+# Subnet to use for the networks. Used only for -network with -create
+subnet = 10.0.0.0
+# Subnet mask to use for the networks. Used only for -network with -create
+submask = 22
+# Randomly allocated a VLAN from the range specified below. Used only for -network with -create
+vlanrange = 80-1000
 # Number of VMs to create per domain. Used only for -create
-numvms = 2
+numvms = 1
+# Whether to start the VMs after creation. Used only for -create
+startvm = true
 # Number of volumes to create & attach per VM. Used only for -create
-numvolumes = 2
+numvolumes = 1
 
 # Credentials to use to run -benchmark & -create. Name should be "admin" for -create
 [admin]

@@ -26,6 +26,30 @@ import (
 	"csbench/utils"
 )
 
+func ListVolumes(cs *cloudstack.CloudStackClient, domainId string) ([]*cloudstack.Volume, error) {
+	result := make([]*cloudstack.Volume, 0)
+	page := 1
+	p := cs.Volume.NewListVolumesParams()
+	p.SetDomainid(domainId)
+	p.SetPagesize(config.PageSize)
+	for {
+		p.SetPage(page)
+		resp, err := cs.Volume.ListVolumes(p)
+
+		if err != nil {
+			log.Printf("Failed to list volume due to: %v", err)
+			return result, err
+		}
+		result = append(result, resp.Volumes...)
+		if len(result) < resp.Count {
+			page++
+		} else {
+			break
+		}
+	}
+	return result, nil
+}
+
 func CreateVolume(cs *cloudstack.CloudStackClient, domainId string, account string) (*cloudstack.CreateVolumeResponse, error) {
 	volName := "Volume-" + utils.RandomString(10)
 	p := cs.Volume.NewCreateVolumeParams()

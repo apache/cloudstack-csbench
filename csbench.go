@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -191,31 +192,65 @@ func generateReport(results map[string][]*Result, format string, outputFile stri
 
 func main() {
 	dbprofile := flag.Int("dbprofile", 0, "DB profile number")
-	create := flag.Bool("create", false, "Create resources")
+	create := flag.Bool("create", false, "Create resources. Specify at least one of the following options:\n\t"+
+		"-domain - Create subdomains and accounts\n\t"+
+		"-limits - Update limits to -1 for subdomains and accounts\n\t"+
+		"-network - Create shared network in all subdomains\n\t"+
+		"-vm - Deploy VMs in all networks in the subdomains\n\t"+
+		"-volume - Create and attach Volumes to VMs")
 	benchmark := flag.Bool("benchmark", false, "Benchmark list APIs")
-	domainFlag := flag.Bool("domain", false, "Create subdomains and accounts")
+	domainFlag := flag.Bool("domain", false, "Works with -create & -teardown\n\t"+
+		"-create - Create subdomains and accounts\n\t"+
+		"-teardown - Delete all subdomains and accounts")
 	limitsFlag := flag.Bool("limits", false, "Update limits to -1 for subdomains and accounts")
-	networkFlag := flag.Bool("network", false, "Create shared network in all subdomains")
-	vmFlag := flag.Bool("vm", false, "Deploy VMs in all networks in the subdomains")
-	volumeFlag := flag.Bool("volume", false, "Create and attach Volumes to VMs")
-	tearDown := flag.Bool("teardown", false, "Tear down all subdomains")
+	networkFlag := flag.Bool("network", false, "Works with -create & -teardown\n\t"+
+		"-create - Create shared network in all subdomains\n\t"+
+		"-teardown - Delete all networks in the subdomains")
+	vmFlag := flag.Bool("vm", false, "Works with -create & -teardown\n\t"+
+		"-create - Deploy VMs in all networks in the subdomains\n\t"+
+		"-teardown - Delete all VMs in the subdomains")
+	volumeFlag := flag.Bool("volume", false, "Works with -create & -teardown\n\t"+
+		"-create - Create and attach Volumes to VMs\n\t"+
+		"-teardown - Delete all volumes in the subdomains")
+	vmAction := flag.String("vmaction", "", "Action to perform on VMs. Options:\n\t"+
+		"start - start all VMs\n\t"+
+		"stop - stop all VMs\n\t"+
+		"reboot - reboot all running VMs\n\t"+
+		"toggle - stop running VMs and start stopped VMs\n\t"+
+		"random - Randomly toggle VMs")
+	tearDown := flag.Bool("teardown", false, "Tear down resources. Specify at least one of the following options:\n\t"+
+		"-domain - Delete all subdomains and accounts\n\t"+
+		"-network - Delete all networks in the subdomains\n\t"+
+		"-vm - Delete all VMs in the subdomains\n\t"+
+		"-volume - Delete all volumes in the subdomains")
 	workers := flag.Int("workers", 10, "Number of workers to use while creating resources")
 	format := flag.String("format", "table", "Format of the report (csv, tsv, table). Valid only for create")
 	outputFile := flag.String("output", "", "Path to output file. Valid only for create")
 	configFile := flag.String("config", "config/config", "Path to config file")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: go run csmetrictool.go -dbprofile <DB profile number>\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
-	if !(*create || *benchmark || *tearDown) {
-		log.Fatal("Please provide one of the following options: -create, -benchmark, -teardown")
+	if !(*create || *benchmark || *tearDown || *vmAction != "") {
+		log.Fatal("Please provide one of the following options: -create, -benchmark, -vmaction, -teardown")
+	}
+
+	if *create && *tearDown && *vmAction == "" {
+		log.Fatal("Please provide only one of the following options: -create, -teardown, -vmaction")
+	}
+
+	if *vmAction != "" && !(*vmAction == "start" || *vmAction == "stop" || *vmAction == "reboot" || *vmAction == "toggle" || *vmAction == "random") {
+		log.Fatal("Invalid VM action. Please provide one of the following: start, stop, reboot, toggle, random")
 	}
 
 	if *create && !(*domainFlag || *limitsFlag || *networkFlag || *vmFlag || *volumeFlag) {
 		log.Fatal("Please provide one of the following options with create: -domain, -limits, -network, -vm, -volume")
+	}
+
+	if *tearDown && !(*domainFlag || *networkFlag || *vmFlag || *volumeFlag) {
+		log.Fatal("Please provide one of the following options with teardown: -domain, -limits, -network, -vm, -volume")
 	}
 
 	switch *format {
@@ -240,6 +275,16 @@ func main() {
 		generateReport(results, *format, *outputFile)
 	}
 
+	if *vmAction != "" {
+		results := executeVMAction(vmAction, workers)
+		generateReport(results, *format, *outputFile)
+	}
+
+	if *tearDown {
+		results := tearDownEnv(domainFlag, networkFlag, vmFlag, volumeFlag, workers)
+		generateReport(results, *format, *outputFile)
+	}
+
 	if *benchmark {
 		log.Infof("\nStarted benchmarking the CloudStack environment [%s]", apiURL)
 
@@ -258,9 +303,95 @@ func main() {
 		log.Infof("Done with benchmarking the CloudStack environment [%s]", apiURL)
 	}
 
-	if *tearDown {
-		tearDownEnv()
+}
+
+func executeVMAction(vmAction *string, workers *int) map[string][]*Result {
+
+	parentDomainId := config.ParentDomainId
+	var cs *cloudstack.CloudStackClient
+	workerPool := pool.NewWithResults[map[string]*Result]().WithMaxGoroutines(*workers)
+	for _, profile := range profiles {
+		if profile.Name == "admin" {
+			cs = cloudstack.NewAsyncClient(config.URL, profile.ApiKey, profile.SecretKey, false)
+		}
 	}
+
+	if cs == nil {
+		log.Fatal("Failed to find admin profile")
+	}
+
+	log.Infof("Fetching all VMs in subdomains for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, config.ParentDomainId)
+	var allVMs []*cloudstack.VirtualMachine
+	for _, dmn := range domains {
+		vms, err := vm.ListVMs(cs, dmn.Id)
+		if err != nil {
+			log.Warn("Error listing VMs: ", err)
+			continue
+		}
+		allVMs = append(allVMs, vms...)
+	}
+
+	progressMarker := int(math.Ceil(float64(len(allVMs)) / 10.0))
+	start := time.Now()
+
+	for i, virtualMachine := range allVMs {
+		virtualMachine := virtualMachine
+
+		if (i+1)%progressMarker == 0 {
+			log.Infof("Executed %d VMs", i+1)
+		}
+
+		if *vmAction == "random" && rand.Intn(100) < 50 {
+			continue
+		}
+
+		workerPool.Go(func() map[string]*Result {
+			taskStart := time.Now()
+			result := false
+			action := "skipped"
+			switch virtualMachine.State {
+			case "Running":
+				if *vmAction == "stop" || *vmAction == "toggle" || *vmAction == "random" {
+					err := vm.StopVM(cs, virtualMachine.Id)
+					result = err == nil
+					action = "stop"
+				} else if *vmAction == "reboot" {
+					err := vm.RebootVM(cs, virtualMachine.Id)
+					result = err == nil
+					action = "reboot"
+				}
+			case "Stopped":
+				if *vmAction == "start" || *vmAction == "toggle" || *vmAction == "random" {
+					err := vm.StartVM(cs, virtualMachine.Id)
+					result = err == nil
+					action = "start"
+				} else if *vmAction == "reboot" {
+					result = false
+					action = "stop"
+				}
+			}
+			return map[string]*Result{
+				action: {
+					Success:  result,
+					Duration: time.Since(taskStart).Seconds(),
+				},
+			}
+		})
+	}
+	res := workerPool.Wait()
+	log.Infof("Executed %s on %d VMs in %.2f seconds", *vmAction, len(allVMs), time.Since(start).Seconds())
+	var results = make(map[string][]*Result)
+	for _, result := range res {
+		for key, value := range result {
+			key = "vmaction-" + key
+			if results[key] == nil {
+				results[key] = make([]*Result, 0)
+			}
+			results[key] = append(results[key], value)
+		}
+	}
+	return results
 }
 
 func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bool, workers *int) map[string][]*Result {
@@ -269,6 +400,7 @@ func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bo
 	for _, profile := range profiles {
 		if profile.Name == "admin" {
 
+			numNetworksPerDomain := config.NumNetworks
 			numVmsPerNetwork := config.NumVms
 			numVolumesPerVM := config.NumVolumes
 
@@ -288,7 +420,7 @@ func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bo
 
 			if *networkFlag {
 				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
-				results["network"] = createNetwork(workerPool, cs, config.ParentDomainId)
+				results["network"] = createNetwork(workerPool, cs, config.ParentDomainId, numNetworksPerDomain)
 			}
 
 			if *vmFlag {
@@ -373,33 +505,37 @@ func updateLimits(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStac
 	return res
 }
 
-func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string, numNetworkPerDomain int) []*Result {
 	log.Infof("Fetching subdomains for domain %s", parentDomainId)
 	domains := domain.ListSubDomains(cs, parentDomainId)
 
-	progressMarker := int(math.Ceil(float64(len(domains)) / 10.0))
+	progressMarker := int(math.Ceil(float64(len(domains)*numNetworkPerDomain) / 10.0))
 	start := time.Now()
 	log.Infof("Creating %d networks", len(domains))
 	for i, dmn := range domains {
-		if (i+1)%progressMarker == 0 {
-			log.Infof("Created %d networks", i+1)
-		}
-		i := i
-		dmn := dmn
-		workerPool.Go(func() *Result {
-			taskStart := time.Now()
-			_, err := network.CreateNetwork(cs, dmn.Id, i)
-			if err != nil {
+		for j := 1; j <= numNetworkPerDomain; j++ {
+			counter := i*j + j
+			dmn := dmn
+
+			if counter%progressMarker == 0 {
+				log.Infof("Created %d networks", counter)
+			}
+
+			workerPool.Go(func() *Result {
+				taskStart := time.Now()
+				_, err := network.CreateNetwork(cs, dmn.Id, counter-1)
+				if err != nil {
+					return &Result{
+						Success:  false,
+						Duration: time.Since(taskStart).Seconds(),
+					}
+				}
 				return &Result{
-					Success:  false,
+					Success:  true,
 					Duration: time.Since(taskStart).Seconds(),
 				}
-			}
-			return &Result{
-				Success:  true,
-				Duration: time.Since(taskStart).Seconds(),
-			}
-		})
+			})
+		}
 	}
 	res := workerPool.Wait()
 	log.Infof("Created %d networks in %.2f seconds", len(domains), time.Since(start).Seconds())
@@ -519,20 +655,193 @@ func createVolumes(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 	return res
 }
 
-func tearDownEnv() {
-	parentDomain := config.ParentDomainId
+func tearDownEnv(domainFlag, networkFlag, vmFlag, volumeFlag *bool, workers *int) map[string][]*Result {
 	apiURL := config.URL
 
 	for _, profile := range profiles {
 		userProfileName := profile.Name
 		if userProfileName == "admin" {
 			cs := cloudstack.NewAsyncClient(apiURL, profile.ApiKey, profile.SecretKey, false)
-			domains := domain.ListSubDomains(cs, parentDomain)
-			log.Infof("Deleting %d domains", len(domains))
-			for _, subdomain := range domains {
-				domain.DeleteDomain(cs, subdomain.Id)
+
+			var results = make(map[string][]*Result)
+
+			if *vmFlag {
+				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
+				results["vm-destroy"] = destroyVms(workerPool, cs, config.ParentDomainId)
 			}
-			break
+
+			if *volumeFlag {
+				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
+				results["volume-delete"] = deleteVolumes(workerPool, cs, config.ParentDomainId)
+			}
+
+			if *networkFlag {
+				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
+				results["network-delete"] = deleteNetworks(workerPool, cs, config.ParentDomainId)
+			}
+
+			if *domainFlag {
+				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
+				results["domain-delete"] = deleteDomains(workerPool, cs, config.ParentDomainId)
+			}
+
+			return results
 		}
 	}
+	return nil
+}
+
+func destroyVms(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+	log.Infof("Fetching subdomains & accounts for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, parentDomainId)
+	var allVMs []*cloudstack.VirtualMachine
+	for _, dmn := range domains {
+		vms, err := vm.ListVMs(cs, dmn.Id)
+		if err != nil {
+			log.Warn("Error listing VMs: ", err)
+			continue
+		}
+		allVMs = append(allVMs, vms...)
+	}
+
+	progressMarker := int(math.Ceil(float64(len(allVMs)) / 10.0))
+	start := time.Now()
+
+	log.Infof("Destroying %d VMs", len(allVMs))
+
+	for i, virtualMachine := range allVMs {
+		virtualMachine := virtualMachine
+		if i%progressMarker == 0 {
+			log.Infof("Destroyed %d VMs", i+1)
+		}
+
+		workerPool.Go(func() *Result {
+			taskStart := time.Now()
+			err := vm.DestroyVm(cs, virtualMachine.Id)
+			if err != nil {
+				return &Result{
+					Success:  false,
+					Duration: time.Since(taskStart).Seconds(),
+				}
+			}
+			return &Result{
+				Success:  true,
+				Duration: time.Since(taskStart).Seconds(),
+			}
+		})
+	}
+
+	res := workerPool.Wait()
+	log.Infof("Destroyed %d VMs in %.2f seconds", len(allVMs), time.Since(start).Seconds())
+	return res
+}
+
+func deleteNetworks(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+	log.Infof("Fetching subdomains & accounts for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, parentDomainId)
+
+	log.Infof("Fetching networks for subdomains in domain %s", parentDomainId)
+	var allNetworks []*cloudstack.Network
+	for _, domain := range domains {
+		network, _ := network.ListNetworks(cs, domain.Id)
+		allNetworks = append(allNetworks, network...)
+	}
+
+	progressMarker := int(math.Ceil(float64(len(allNetworks)) / 10.0))
+	start := time.Now()
+	log.Infof("Deleting %d networks", len(allNetworks))
+	for i, net := range allNetworks {
+		net := net
+		if (i+1)%progressMarker == 0 {
+			log.Infof("Deleted %d networks", i+1)
+		}
+		workerPool.Go(func() *Result {
+			taskStart := time.Now()
+			resp, err := network.DeleteNetwork(cs, net.Id)
+			if err != nil || !resp {
+				return &Result{
+					Success:  false,
+					Duration: time.Since(taskStart).Seconds(),
+				}
+			}
+			return &Result{
+				Success:  true,
+				Duration: time.Since(taskStart).Seconds(),
+			}
+		})
+	}
+	res := workerPool.Wait()
+	log.Infof("Deleted %d networks in %.2f seconds", len(allNetworks), time.Since(start).Seconds())
+	return res
+}
+
+func deleteVolumes(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+	log.Infof("Fetching subdomains & accounts for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, parentDomainId)
+
+	log.Infof("Fetching volumes for subdomains in domain %s", parentDomainId)
+	var allVolumes []*cloudstack.Volume
+	for _, domain := range domains {
+		volumes, _ := volume.ListVolumes(cs, domain.Id)
+		allVolumes = append(allVolumes, volumes...)
+	}
+
+	progressMarker := int(math.Ceil(float64(len(allVolumes)) / 10.0))
+	start := time.Now()
+	log.Infof("Deleting %d volumes", len(allVolumes))
+	for i, vol := range allVolumes {
+		vol := vol
+		if (i+1)%progressMarker == 0 {
+			log.Infof("Deleted %d volumes", i+1)
+		}
+		workerPool.Go(func() *Result {
+			taskStart := time.Now()
+			_, err := volume.DestroyVolume(cs, vol.Id)
+			if err != nil {
+				return &Result{
+					Success:  false,
+					Duration: time.Since(taskStart).Seconds(),
+				}
+			}
+			return &Result{
+				Success:  true,
+				Duration: time.Since(taskStart).Seconds(),
+			}
+		})
+	}
+	res := workerPool.Wait()
+	log.Infof("Deleted %d volumes in %.2f seconds", len(allVolumes), time.Since(start).Seconds())
+	return res
+}
+
+func deleteDomains(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string) []*Result {
+	log.Infof("Fetching subdomains for domain %s", parentDomainId)
+	domains := domain.ListSubDomains(cs, parentDomainId)
+
+	progressMarker := int(math.Ceil(float64(len(domains)) / 10.0))
+	start := time.Now()
+	log.Infof("Deleting %d domains", len(domains))
+	for i, dmn := range domains {
+		dmn := dmn
+		if (i+1)%progressMarker == 0 {
+			log.Infof("Deleted %d domains", i+1)
+		}
+		workerPool.Go(func() *Result {
+			taskStart := time.Now()
+			resp, err := domain.DeleteDomain(cs, dmn.Id)
+			if !resp || err != nil {
+				return &Result{
+					Success:  false,
+					Duration: time.Since(taskStart).Seconds(),
+				}
+			}
+			return &Result{
+				Success:  true,
+				Duration: time.Since(taskStart).Seconds(),
+			}
+		})
+	}
+	res := workerPool.Wait()
+	log.Infof("Deleted %d domains in %.2f seconds", len(domains), time.Since(start).Seconds())
+	return res
 }

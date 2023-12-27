@@ -47,8 +47,14 @@ var DiskOfferingId = ""
 var TemplateId = ""
 var ParentDomainId = ""
 var NumDomains = 0
-var NumVms = 0
-var NumVolumes = 0
+var NumNetworks = 0
+var Subnet = "10.0.0.0"
+var Submask = 22
+var VlanStart = 80
+var VlanEnd = 1000
+var StartVM = true
+var NumVms = 1
+var NumVolumes = 1
 
 func ReadProfiles(filePath string) (map[int]*Profile, error) {
 	file, err := os.Open(filePath)
@@ -137,11 +143,42 @@ func ReadProfiles(filePath string) (map[int]*Profile, error) {
 					if err == nil {
 						NumDomains = numDomains
 					}
+				case "numnetworks":
+					var numNetworks int
+					_, err := fmt.Sscanf(value, "%d", &numNetworks)
+					if err == nil {
+						NumNetworks = numNetworks
+					}
+				case "subnet":
+					var subnet string
+					_, err := fmt.Sscanf(value, "%s", &subnet)
+					if err == nil {
+						Subnet = subnet
+					}
+				case "submask":
+					var submask int
+					_, err := fmt.Sscanf(value, "%d", &submask)
+					if err == nil {
+						Submask = submask
+					}
+				case "vlanrange":
+					var vlanStart, vlanEnd int
+					_, err := fmt.Sscanf(value, "%d-%d", &vlanStart, &vlanEnd)
+					if err == nil {
+						VlanStart = vlanStart
+						VlanEnd = vlanEnd
+					}
 				case "numvms":
 					var numVms int
 					_, err := fmt.Sscanf(value, "%d", &numVms)
 					if err == nil {
 						NumVms = numVms
+					}
+				case "startvm":
+					var startvm bool
+					_, err := fmt.Sscanf(value, "%t", &startvm)
+					if err == nil {
+						StartVM = startvm
 					}
 				case "numvolumes":
 					var numVolumes int
