@@ -36,6 +36,8 @@ github:
     rebase: false
 
   collaborators:
+    - kiranchavala
+    - rajujith
     - vishesh92
     - acs-robot
 
