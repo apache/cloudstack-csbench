@@ -192,7 +192,12 @@ func generateReport(results map[string][]*Result, format string, outputFile stri
 
 func main() {
 	dbprofile := flag.Int("dbprofile", 0, "DB profile number")
-	create := flag.Bool("create", false, "Create resources")
+	create := flag.Bool("create", false, "Create resources. Specify at least one of the following options:\n\t"+
+		"-domain - Create subdomains and accounts\n\t"+
+		"-limits - Update limits to -1 for subdomains and accounts\n\t"+
+		"-network - Create shared network in all subdomains\n\t"+
+		"-vm - Deploy VMs in all networks in the subdomains\n\t"+
+		"-volume - Create and attach Volumes to VMs")
 	benchmark := flag.Bool("benchmark", false, "Benchmark list APIs")
 	domainFlag := flag.Bool("domain", false, "Works with -create & -teardown\n\t"+
 		"-create - Create subdomains and accounts\n\t"+
@@ -213,7 +218,11 @@ func main() {
 		"reboot - reboot all running VMs\n\t"+
 		"toggle - stop running VMs and start stopped VMs\n\t"+
 		"random - Randomly toggle VMs")
-	tearDown := flag.Bool("teardown", false, "Tear down resources")
+	tearDown := flag.Bool("teardown", false, "Tear down resources. Specify at least one of the following options:\n\t"+
+		"-domain - Delete all subdomains and accounts\n\t"+
+		"-network - Delete all networks in the subdomains\n\t"+
+		"-vm - Delete all VMs in the subdomains\n\t"+
+		"-volume - Delete all volumes in the subdomains")
 	workers := flag.Int("workers", 10, "Number of workers to use while creating resources")
 	format := flag.String("format", "table", "Format of the report (csv, tsv, table). Valid only for create")
 	outputFile := flag.String("output", "", "Path to output file. Valid only for create")
