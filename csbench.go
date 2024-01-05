@@ -332,7 +332,7 @@ func executeVMAction(vmAction *string, workers *int) map[string][]*Result {
 		allVMs = append(allVMs, vms...)
 	}
 
-	progressMarker := int(math.Ceil(float64(len(allVMs)) / 10.0))
+	progressMarker := int(math.Max(float64(len(allVMs))/10.0, 5))
 	start := time.Now()
 
 	for i, virtualMachine := range allVMs {
@@ -410,7 +410,11 @@ func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bo
 
 			if *domainFlag {
 				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
-				results["domain"] = createDomains(workerPool, cs, config.ParentDomainId, config.NumDomains)
+				if config.NumDomains > 0 {
+					results["domain"] = createDomains(workerPool, cs, config.ParentDomainId, config.NumDomains)
+				} else {
+					log.Warn("Number of domains (numdomains) is less than 1. Skipping domain creation")
+				}
 			}
 
 			if *limitsFlag {
@@ -420,17 +424,29 @@ func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bo
 
 			if *networkFlag {
 				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
-				results["network"] = createNetwork(workerPool, cs, config.ParentDomainId, numNetworksPerDomain)
+				if numNetworksPerDomain > 0 {
+					results["network"] = createNetwork(workerPool, cs, config.ParentDomainId, numNetworksPerDomain)
+				} else {
+					log.Warn("Number of networks per domain (numnetworks) is less than 1. Skipping network creation")
+				}
 			}
 
 			if *vmFlag {
 				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
-				results["vm"] = createVms(workerPool, cs, config.ParentDomainId, numVmsPerNetwork)
+				if numVmsPerNetwork > 0 {
+					results["vm"] = createVms(workerPool, cs, config.ParentDomainId, numVmsPerNetwork)
+				} else {
+					log.Warn("Number of VMs per network (numvms) is less than 1. Skipping VM creation")
+				}
 			}
 
 			if *volumeFlag {
 				workerPool := pool.NewWithResults[*Result]().WithMaxGoroutines(*workers)
-				results["volume"] = createVolumes(workerPool, cs, config.ParentDomainId, numVolumesPerVM)
+				if numVolumesPerVM > 0 {
+					results["volume"] = createVolumes(workerPool, cs, config.ParentDomainId, numVolumesPerVM)
+				} else {
+					log.Warn("Number of volumes per VM (numvolumes) is less than 1. Skipping volume creation")
+				}
 			}
 
 			return results
@@ -440,7 +456,7 @@ func createResources(domainFlag, limitsFlag, networkFlag, vmFlag, volumeFlag *bo
 }
 
 func createDomains(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackClient, parentDomainId string, count int) []*Result {
-	progressMarker := int(math.Ceil(float64(count) / 10.0))
+	progressMarker := int(math.Max(float64(count)/10.0, 5))
 	start := time.Now()
 	log.Infof("Creating %d domains", count)
 	for i := 0; i < count; i++ {
@@ -483,7 +499,7 @@ func updateLimits(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStac
 		accounts = append(accounts, domain.ListAccounts(cs, dmn.Id)...)
 	}
 
-	progressMarker := int(math.Ceil(float64(len(accounts)) / 10.0))
+	progressMarker := int(math.Max(float64(len(accounts))/10.0, 5))
 	start := time.Now()
 	log.Infof("Updating limits for %d accounts", len(accounts))
 	for i, account := range accounts {
@@ -509,7 +525,7 @@ func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 	log.Infof("Fetching subdomains for domain %s", parentDomainId)
 	domains := domain.ListSubDomains(cs, parentDomainId)
 
-	progressMarker := int(math.Ceil(float64(len(domains)*numNetworkPerDomain) / 10.0))
+	progressMarker := int(math.Max(float64(len(domains)*numNetworkPerDomain)/10.0, 5))
 	start := time.Now()
 	log.Infof("Creating %d networks", len(domains))
 	for i, dmn := range domains {
@@ -538,7 +554,7 @@ func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 		}
 	}
 	res := workerPool.Wait()
-	log.Infof("Created %d networks in %.2f seconds", len(domains), time.Since(start).Seconds())
+	log.Infof("Created %d networks in %.2f seconds", len(domains)*numNetworkPerDomain, time.Since(start).Seconds())
 	return res
 }
 
@@ -563,7 +579,7 @@ func createVms(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackCl
 		allNetworks = append(allNetworks, network...)
 	}
 
-	progressMarker := int(math.Ceil(float64(len(allNetworks)*numVmPerNetwork) / 10.0))
+	progressMarker := int(math.Max(float64(len(allNetworks)*numVmPerNetwork)/10.0, 5))
 	start := time.Now()
 	log.Infof("Creating %d VMs", len(allNetworks)*numVmPerNetwork)
 	for i, network := range allNetworks {
@@ -607,7 +623,7 @@ func createVolumes(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 		allVMs = append(allVMs, vms...)
 	}
 
-	progressMarker := int(math.Ceil(float64(len(allVMs)*numVolumesPerVM) / 10.0))
+	progressMarker := int(math.Max(float64(len(allVMs)*numVolumesPerVM)/10.0, 5))
 	start := time.Now()
 
 	log.Infof("Creating %d volumes", len(allVMs)*numVolumesPerVM)
@@ -704,7 +720,7 @@ func destroyVms(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackC
 		allVMs = append(allVMs, vms...)
 	}
 
-	progressMarker := int(math.Ceil(float64(len(allVMs)) / 10.0))
+	progressMarker := int(math.Max(float64(len(allVMs))/10.0, 5))
 	start := time.Now()
 
 	log.Infof("Destroying %d VMs", len(allVMs))
@@ -747,7 +763,7 @@ func deleteNetworks(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSt
 		allNetworks = append(allNetworks, network...)
 	}
 
-	progressMarker := int(math.Ceil(float64(len(allNetworks)) / 10.0))
+	progressMarker := int(math.Max(float64(len(allNetworks))/10.0, 5))
 	start := time.Now()
 	log.Infof("Deleting %d networks", len(allNetworks))
 	for i, net := range allNetworks {
@@ -786,7 +802,7 @@ func deleteVolumes(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 		allVolumes = append(allVolumes, volumes...)
 	}
 
-	progressMarker := int(math.Ceil(float64(len(allVolumes)) / 10.0))
+	progressMarker := int(math.Max(float64(len(allVolumes))/10.0, 5))
 	start := time.Now()
 	log.Infof("Deleting %d volumes", len(allVolumes))
 	for i, vol := range allVolumes {
@@ -818,7 +834,7 @@ func deleteDomains(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 	log.Infof("Fetching subdomains for domain %s", parentDomainId)
 	domains := domain.ListSubDomains(cs, parentDomainId)
 
-	progressMarker := int(math.Ceil(float64(len(domains)) / 10.0))
+	progressMarker := int(math.Max(float64(len(domains))/10.0, 5))
 	start := time.Now()
 	log.Infof("Deleting %d domains", len(domains))
 	for i, dmn := range domains {
