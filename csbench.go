@@ -250,7 +250,7 @@ func main() {
 	}
 
 	if *tearDown && !(*domainFlag || *networkFlag || *vmFlag || *volumeFlag) {
-		log.Fatal("Please provide one of the following options with teardown: -domain, -limits, -network, -vm, -volume")
+		log.Fatal("Please provide one of the following options with teardown: -domain, -network, -vm, -volume")
 	}
 
 	switch *format {
