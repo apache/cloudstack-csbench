@@ -526,20 +526,21 @@ func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 	domains := domain.ListSubDomains(cs, parentDomainId)
 
 	progressMarker := int(math.Max(float64(len(domains)*numNetworkPerDomain)/10.0, 5))
+	counter := 0
 	start := time.Now()
 	log.Infof("Creating %d networks", len(domains))
-	for i, dmn := range domains {
+	for _, dmn := range domains {
 		for j := 1; j <= numNetworkPerDomain; j++ {
-			counter := i*j + j
+			networkIdx := counter
 			dmn := dmn
-
+			counter++
 			if counter%progressMarker == 0 {
 				log.Infof("Created %d networks", counter)
 			}
 
 			workerPool.Go(func() *Result {
 				taskStart := time.Now()
-				_, err := network.CreateNetwork(cs, dmn.Id, counter-1)
+				_, err := network.CreateNetwork(cs, dmn.Id, networkIdx)
 				if err != nil {
 					return &Result{
 						Success:  false,
@@ -580,14 +581,15 @@ func createVms(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudStackCl
 	}
 
 	progressMarker := int(math.Max(float64(len(allNetworks)*numVmPerNetwork)/10.0, 5))
+	counter := 0
 	start := time.Now()
 	log.Infof("Creating %d VMs", len(allNetworks)*numVmPerNetwork)
-	for i, network := range allNetworks {
+	for _, network := range allNetworks {
 		network := network
 		for j := 1; j <= numVmPerNetwork; j++ {
-
-			if (i*j+j)%progressMarker == 0 {
-				log.Infof("Created %d VMs", i*j+j)
+			counter++
+			if counter%progressMarker == 0 {
+				log.Infof("Created %d VMs", counter)
 			}
 			workerPool.Go(func() *Result {
 				taskStart := time.Now()
@@ -628,16 +630,18 @@ func createVolumes(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 
 	log.Infof("Creating %d volumes", len(allVMs)*numVolumesPerVM)
 	unsuitableVmCount := 0
+	counter := 0
 
-	for i, vm := range allVMs {
+	for _, vm := range allVMs {
 		vm := vm
 		if vm.State != "Running" && vm.State != "Stopped" {
 			unsuitableVmCount++
 			continue
 		}
 		for j := 1; j <= numVolumesPerVM; j++ {
-			if (i*j+j)%progressMarker == 0 {
-				log.Infof("Created %d volumes", i*j+j)
+			counter++
+			if counter%progressMarker == 0 {
+				log.Infof("Created %d volumes", counter)
 			}
 
 			workerPool.Go(func() *Result {
@@ -667,7 +671,7 @@ func createVolumes(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 		log.Warnf("Found %d VMs in unsuitable state", unsuitableVmCount)
 	}
 	res := workerPool.Wait()
-	log.Infof("Created %d volumes in %.2f seconds", (len(allVMs)-unsuitableVmCount)*numVolumesPerVM, time.Since(start).Seconds())
+	log.Infof("Created %d volumes in %.2f seconds", counter, time.Since(start).Seconds())
 	return res
 }
 
