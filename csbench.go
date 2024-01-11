@@ -528,7 +528,7 @@ func createNetwork(workerPool *pool.ResultPool[*Result], cs *cloudstack.CloudSta
 	progressMarker := int(math.Max(float64(len(domains)*numNetworkPerDomain)/10.0, 5))
 	counter := 0
 	start := time.Now()
-	log.Infof("Creating %d networks", len(domains))
+	log.Infof("Creating %d networks", len(domains)*numNetworkPerDomain)
 	for _, dmn := range domains {
 		for j := 1; j <= numNetworkPerDomain; j++ {
 			networkIdx := counter
