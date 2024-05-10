@@ -313,6 +313,7 @@ func executeVMAction(vmAction *string, workers *int) map[string][]*Result {
 	for _, profile := range profiles {
 		if profile.Name == "admin" {
 			cs = cloudstack.NewAsyncClient(config.URL, profile.ApiKey, profile.SecretKey, false)
+			cs.Timeout(time.Duration(300 * time.Second))
 		}
 	}
 
