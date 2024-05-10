@@ -70,6 +70,7 @@ func CreateNetwork(cs *cloudstack.CloudStackClient, domainId string, count int) 
 	p.SetStartip(startIP)
 	p.SetEndip(endIP)
 	p.SetVlan(strconv.Itoa(getRandomVlan()))
+	p.SetBypassvlanoverlapcheck(true)
 
 	resp, err := cs.Network.CreateNetwork(p)
 	if err != nil {
