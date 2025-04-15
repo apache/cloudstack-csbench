@@ -253,10 +253,14 @@ func saveData(apiURL string, count float64, minTime float64, maxTime float64, av
 
 func executeAPI(apiURL string, params url.Values) (float64, float64, bool) {
 	// Send the API request and calculate the time
-	apiURL = fmt.Sprintf("%s?%s", apiURL, params.Encode())
+	data := strings.NewReader(params.Encode())
 	log.Infof("Running the API %s", apiURL)
 	start := time.Now()
-	resp, err := http.Get(apiURL)
+	resp, err := http.Post(
+		apiURL,
+		"application/x-www-form-urlencoded",
+		data,
+	)
 	APIscount++
 	if err != nil {
 		log.Infof("Error sending API request: %s with error %s\n", apiURL, err)
