@@ -257,10 +257,10 @@ func executeAPI(apiURL string, params url.Values, post bool) (float64, float64, 
 	// Send the API request and calculate the time
 	var resp *http.Response
 	var err error
-	dataBody := strings.NewReader(params.Encode())
 	log.Infof("Running the API %s", apiURL)
 	start := time.Now()
 	if post {
+		dataBody := strings.NewReader(params.Encode())
 		resp, err = http.Post(
 			apiURL,
 			"application/x-www-form-urlencoded",
