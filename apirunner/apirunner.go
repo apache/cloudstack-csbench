@@ -125,12 +125,16 @@ func executeAPIandCalculate(profileName string, apiURL string, command string, p
 	var avgTime float64
 	var totalTime float64
 	var count float64
+	getRequestList := map[string]struct{}{"isaccountallowedtocreateofferingswithtags": {}, "readyforshutdown": {}, "cloudianisenabled": {}, "quotabalance": {}, 
+	"quotasummary": {}, "quotatarifflist": {}, "quotaisenabled": {}, "quotastatement": {}}
+	_, isInGetRequestList := getRequestList[command]
 	isGetRequest, _ := regexp.MatchString("^(get|list|query|find)(\\w+)+$", command)
+
 	if iterations != 1 {
 		log.Infof("Calling API %s for %d number of iterations with parameters %s", command, iterations, params)
 		for i := 1; i <= iterations; i++ {
 			log.Infof("Started with iteration %d for the command %s", i, command)
-			elapsedTime, apicount, result := executeAPI(apiURL, params, isGetRequest)
+			elapsedTime, apicount, result := executeAPI(apiURL, params, isGetRequest || isInGetRequestList)
 			count = apicount
 			if elapsedTime < minTime {
 				minTime = elapsedTime
