@@ -126,7 +126,7 @@ func executeAPIandCalculate(profileName string, apiURL string, command string, p
 	var totalTime float64
 	var count float64
 	getRequestList := map[string]struct{}{"isaccountallowedtocreateofferingswithtags": {}, "readyforshutdown": {}, "cloudianisenabled": {}, "quotabalance": {}, 
-	"quotasummary": {}, "quotatarifflist": {}, "quotaisenabled": {}, "quotastatement": {}}
+	"quotasummary": {}, "quotatarifflist": {}, "quotaisenabled": {}, "quotastatement": {}, "verifyoauthcodeandgetuser": {}}
 	_, isInGetRequestList := getRequestList[command]
 	isGetRequest, _ := regexp.MatchString("^(get|list|query|find)(\\w+)+$", command)
 
