@@ -134,7 +134,7 @@ func executeAPIandCalculate(profileName string, apiURL string, command string, p
 		log.Infof("Calling API %s for %d number of iterations with parameters %s", command, iterations, params)
 		for i := 1; i <= iterations; i++ {
 			log.Infof("Started with iteration %d for the command %s", i, command)
-			elapsedTime, apicount, result := executeAPI(apiURL, params, isGetRequest || isInGetRequestList)
+			elapsedTime, apicount, result := executeAPI(apiURL, params, !(isGetRequest || isInGetRequestList))
 			count = apicount
 			if elapsedTime < minTime {
 				minTime = elapsedTime
@@ -151,7 +151,7 @@ func executeAPIandCalculate(profileName string, apiURL string, command string, p
 		log.Infof("count [%.f] : Time in seconds [Min - %.2f] [Max - %.2f] [Avg - %.2f]\n", count, minTime, maxTime, avgTime)
 		saveData(apiURL, count, minTime, maxTime, avgTime, page, pagesize, keyword, profileName, command, dbProfile, reportAppend)
 	} else {
-		elapsedTime, apicount, _ := executeAPI(apiURL, params, isGetRequest)
+		elapsedTime, apicount, _ := executeAPI(apiURL, params, !isGetRequest)
 		log.Infof("Elapsed time [%.2f seconds] for the count [%.0f]", elapsedTime, apicount)
 		saveData(apiURL, count, elapsedTime, elapsedTime, elapsedTime, page, pagesize, keyword, profileName, command, dbProfile, reportAppend)
 	}
@@ -257,13 +257,13 @@ func saveData(apiURL string, count float64, minTime float64, maxTime float64, av
 	log.Info(message)
 }
 
-func executeAPI(apiURL string, params url.Values, post bool) (float64, float64, bool) {
+func executeAPI(apiURL string, params url.Values, postRequest bool) (float64, float64, bool) {
 	// Send the API request and calculate the time
 	var resp *http.Response
 	var err error
 	log.Infof("Running the API %s", apiURL)
 	start := time.Now()
-	if post {
+	if postRequest {
 		dataBody := strings.NewReader(params.Encode())
 		resp, err = http.Post(
 			apiURL,
