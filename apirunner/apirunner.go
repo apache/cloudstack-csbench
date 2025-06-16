@@ -151,7 +151,7 @@ func executeAPIandCalculate(profileName string, apiURL string, command string, p
 		log.Infof("count [%.f] : Time in seconds [Min - %.2f] [Max - %.2f] [Avg - %.2f]\n", count, minTime, maxTime, avgTime)
 		saveData(apiURL, count, minTime, maxTime, avgTime, page, pagesize, keyword, profileName, command, dbProfile, reportAppend)
 	} else {
-		elapsedTime, apicount, _ := executeAPI(apiURL, params, !isGetRequest)
+		elapsedTime, apicount, _ := executeAPI(apiURL, params, !(isGetRequest || isInGetRequestList))
 		log.Infof("Elapsed time [%.2f seconds] for the count [%.0f]", elapsedTime, apicount)
 		saveData(apiURL, count, elapsedTime, elapsedTime, elapsedTime, page, pagesize, keyword, profileName, command, dbProfile, reportAppend)
 	}
